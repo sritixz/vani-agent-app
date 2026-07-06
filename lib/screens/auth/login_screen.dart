@@ -6,9 +6,11 @@ import 'package:vani_app/core/exceptions/app_exception.dart';
 import 'package:vani_app/domain/repositories/auth_repository.dart';
 import 'package:vani_app/presentation/providers/auth_provider.dart';
 import 'package:vani_app/screens/auth/signup_screen.dart';
+import 'package:vani_app/screens/auth/forgot_password_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  final String? initialEmail;
+  const LoginScreen({super.key, this.initialEmail});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -24,7 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController();
+    _emailController = TextEditingController(text: widget.initialEmail ?? '');
     _passwordController = TextEditingController();
   }
 
@@ -300,7 +302,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const ForgotPasswordScreen(),
+                            ),
+                          );
+                        },
                         child: const Text(
                           'Forgot password?',
                           style: TextStyle(

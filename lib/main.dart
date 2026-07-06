@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vani_app/config/theme.dart';
 import 'package:vani_app/screens/splash_screen.dart';
 import 'package:vani_app/screens/auth/login_screen.dart';
+import 'package:vani_app/screens/auth/forgot_password_screen.dart';
+import 'package:vani_app/screens/auth/reset_password_screen.dart';
 import 'package:vani_app/screens/auth/google_callback_screen.dart';
 import 'package:vani_app/screens/main_shell.dart';
 import 'package:vani_app/screens/phone_numbers/available_phone_numbers_screen.dart';
@@ -36,7 +38,17 @@ class MyApp extends StatelessWidget {
       home: const SplashScreen(),
       // Named routes for simple screens
       routes: {
-        '/login': (context) => const LoginScreen(),
+        '/login': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final initialEmail = args is String ? args : null;
+          return LoginScreen(initialEmail: initialEmail);
+        },
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/reset-password': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final email = args is String ? args : '';
+          return ResetPasswordScreen(email: email);
+        },
         '/home': (context) => const MainShell(),
         '/available-phone-numbers': (context) => const AvailablePhoneNumbersScreen(),
         '/whatsapp-inbox': (context) => const WhatsAppInboxScreen(),
