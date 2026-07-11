@@ -45,7 +45,7 @@ class DioClient {
         options: options,
       );
     } catch (e) {
-      rethrow;
+      throw _unwrapException(e);
     }
   }
 
@@ -64,7 +64,7 @@ class DioClient {
         options: options,
       );
     } catch (e) {
-      rethrow;
+      throw _unwrapException(e);
     }
   }
 
@@ -83,7 +83,7 @@ class DioClient {
         options: options,
       );
     } catch (e) {
-      rethrow;
+      throw _unwrapException(e);
     }
   }
 
@@ -118,7 +118,7 @@ class DioClient {
       _logger.e('=== DIO CLIENT PATCH ERROR ===');
       _logger.e('Error: $e');
       _logger.e('==============================');
-      rethrow;
+      throw _unwrapException(e);
     }
   }
 
@@ -137,8 +137,15 @@ class DioClient {
         options: options,
       );
     } catch (e) {
-      rethrow;
+      throw _unwrapException(e);
     }
+  }
+
+  dynamic _unwrapException(dynamic e) {
+    if (e is DioException && e.error is AppException) {
+      return e.error;
+    }
+    return e;
   }
 }
 

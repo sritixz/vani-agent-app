@@ -93,24 +93,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Dashboard',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.darkGrey,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Track credits, calls, channels, and assigned numbers',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: AppTheme.mediumGrey,
-                  ),
-                ),
-                const SizedBox(height: 16),
                 // Credit Balance and Current Plan Row
                 Row(
                   children: [
@@ -290,21 +272,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   )
                 else if (dashboardState.callStatistics != null) ...[
-                  _buildStatCard(
-                    title: 'Total Calls',
-                    value: _formatIndian(
-                      dashboardState.callStatistics!.totalCalls,
-                      decimals: 0,
-                    ),
-                    hasChart: false,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildStatCard(
-                    title: 'Total Minutes',
-                    value: _formatIndian(
-                      dashboardState.callStatistics!.totalMinutesAsDouble,
-                    ),
-                    hasChart: false,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          title: 'Total Calls',
+                          value: _formatIndian(
+                            dashboardState.callStatistics!.totalCalls,
+                            decimals: 0,
+                          ),
+                          hasChart: false,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          title: 'Total Minutes',
+                          value: _formatIndian(
+                            dashboardState.callStatistics!.totalMinutesAsDouble,
+                          ),
+                          hasChart: false,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   _buildStatCard(
@@ -1109,6 +1099,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required bool hasChart,
   }) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surfaceCard,
@@ -1312,7 +1303,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _showAddFundsDialog(BuildContext context) {
-    final textController = TextEditingController(text: '50.00');
+    final textController = TextEditingController(text: '500.00');
     bool dialogLoading = false;
     String? dialogError;
 
@@ -1336,7 +1327,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Enter amount in USD to add to your credit balance. Minimum purchase amount is \$50.00 USD.',
+                    'Enter amount in USD to add to your credit balance. Minimum purchase amount is \$500.00 USD.',
                     style: TextStyle(fontSize: 13, color: AppTheme.mediumGrey),
                   ),
                   const SizedBox(height: 16),
@@ -1346,8 +1337,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     style: const TextStyle(color: AppTheme.darkGrey),
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.attach_money, color: AppTheme.mediumGrey),
-                      hintText: '50.00',
+                      hintText: '500.00',
                       errorText: dialogError,
+                      errorMaxLines: 5,
                       hintStyle: const TextStyle(color: AppTheme.mediumGrey),
                       enabledBorder: const OutlineInputBorder(
                         borderSide: BorderSide(color: AppTheme.borderGrey),
@@ -1383,9 +1375,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       : () async {
                           final amountText = textController.text.trim();
                           final amount = double.tryParse(amountText);
-                          if (amount == null || amount < 50.0) {
+                          if (amount == null || amount < 500.0) {
                             setDialogState(() {
-                              dialogError = 'Minimum amount is \$50.00 USD';
+                              dialogError = 'Minimum amount is \$500.00 USD';
                             });
                             return;
                           }

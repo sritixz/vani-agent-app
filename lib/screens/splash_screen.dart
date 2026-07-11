@@ -49,10 +49,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 color: AppTheme.lightGreen,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(
-                Icons.home,
-                color: AppTheme.primaryGreen,
-                size: 50,
+              padding: const EdgeInsets.all(20),
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
               ),
             ),
             const SizedBox(height: 24),

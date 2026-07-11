@@ -19,6 +19,19 @@ class AgentsApiService {
         .toList();
   }
 
+  Future<List<dynamic>> getOmnivoiceProfiles() async {
+    try {
+      final response = await _dioClient.get('/api/omnivoice/profiles');
+      if (response.data is List) {
+        return response.data as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      _logger.e('Failed to fetch omnivoice profiles from API: $e');
+      return [];
+    }
+  }
+
   Future<Agent> getAgent(String agentId) async {
     final response = await _dioClient.get(ApiEndpoints.agent(agentId));
     return Agent.fromJson(response.data as Map<String, dynamic>);

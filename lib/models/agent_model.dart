@@ -20,6 +20,8 @@ class Agent {
   final List<String>? transcriptionLanguages;
   final List<String>? knowledgeBaseIds;
   final double ttsSpeed;
+  final bool hasTtsSpeed;
+  final int? ttsNumStep;
   final bool allowInterruptions;
   final bool backgroundMusic;
   final bool debugLogging;
@@ -55,6 +57,8 @@ class Agent {
     this.transcriptionLanguages,
     this.knowledgeBaseIds,
     this.ttsSpeed = 1.0,
+    this.hasTtsSpeed = false,
+    this.ttsNumStep,
     required this.allowInterruptions,
     required this.backgroundMusic,
     required this.debugLogging,
@@ -71,61 +75,74 @@ class Agent {
 
   String get engineType {
     String normalize(Object? value) =>
-        value?.toString().toLowerCase().trim().replaceAll('-', '_') ?? '';
+        value?.toString().toLowerCase().trim().replaceAll('_', ' ').replaceAll('-', ' ') ?? '';
 
-    final s2s = normalize(speechToSpeechProvider);
-    final engine = normalize(voiceEngine);
-    final configProvider = normalize(s2sPromptConfig?['provider']);
-    final configGeneratorProvider = normalize(
-      s2sPromptConfig?['generator_provider'],
-    );
-    final configS2sProvider = normalize(
-      s2sPromptConfig?['speech_to_speech_provider'] ??
-          s2sPromptConfig?['speechToSpeechProvider'],
-    );
-    final configEngine = normalize(
-      s2sPromptConfig?['voice_engine'] ??
-          s2sPromptConfig?['voiceEngine'] ??
-          s2sPromptConfig?['engine_type'] ??
-          s2sPromptConfig?['engineType'],
-    );
-
-    final explicitSignals = [
-      engine,
-      s2s,
-      configEngine,
-      configProvider,
-      configGeneratorProvider,
-      configS2sProvider,
-    ].where((signal) => signal.isNotEmpty).toList();
-
-    bool isUltraRealtimeSignal(String signal) {
-      return signal == 'ultra realtime' ||
-          signal == 'ultra_realtime' ||
-          signal == 'openai_realtime' ||
-          signal == 'openai' ||
-          signal == 'realtime';
+    // 1. Check direct ttsProvider to identify Classic Pipeline agents
+    if (ttsProvider != null && ttsProvider.trim().isNotEmpty) {
+      return 'Classic Pipeline';
     }
 
-    bool isVaniUltraSignal(String signal) {
-      return signal == 'vani ultra' ||
-          signal == 'vani_ultra' ||
-          signal == 'gemini_live' ||
-          signal == 'gemini';
+    // Since ttsProvider is null/empty, this is an S2S agent (Vani Ultra or Ultra Realtime)
+    
+    // 2. Check speechToSpeechProvider
+    final s2sProviderStr = normalize(speechToSpeechProvider);
+    if (s2sProviderStr == 'speechgpu' || s2sProviderStr == 'gpu') {
+      return 'Vani Ultra';
     }
-
-    if (explicitSignals.any(isUltraRealtimeSignal)) {
+    if (s2sProviderStr == 'gemini' || s2sProviderStr == 'gemini live') {
       return 'Ultra Realtime';
     }
 
-    if (explicitSignals.any(isVaniUltraSignal)) {
+    // 3. Check direct voiceEngine
+    final engineStr = normalize(voiceEngine);
+    if (engineStr == 'vani ultra' || engineStr == 'speechgpu') {
       return 'Vani Ultra';
     }
+    if (engineStr == 'ultra realtime' || engineStr == 'gemini' || engineStr == 'gemini live') {
+      return 'Ultra Realtime';
+    }
 
-    return 'Classic Pipeline';
+    // 4. Check s2sPromptConfig maps
+    if (s2sPromptConfig != null) {
+      final speechGpuConfig = s2sPromptConfig!['speechgpu'];
+      final geminiConfig = s2sPromptConfig!['gemini'];
+
+      if (speechGpuConfig is Map) {
+        final hasPrompt = speechGpuConfig['system_prompt']?.toString().isNotEmpty ?? false;
+        final isEdited = speechGpuConfig['user_edited'] == true;
+        if (isEdited || hasPrompt) {
+          return 'Vani Ultra';
+        }
+      }
+
+      if (geminiConfig is Map) {
+        final hasPrompt = geminiConfig['system_prompt']?.toString().isNotEmpty ?? false;
+        final isEdited = geminiConfig['user_edited'] == true;
+        if (isEdited || hasPrompt) {
+          return 'Ultra Realtime';
+        }
+      }
+
+      final configProvider = normalize(s2sPromptConfig!['provider'] ??
+          s2sPromptConfig!['s2s']?['provider'] ??
+          s2sPromptConfig!['native_speech_to_speech']?['provider']);
+      if (configProvider == 'speechgpu' || configProvider == 'gpu') {
+        return 'Vani Ultra';
+      }
+      if (configProvider == 'gemini' || configProvider == 'gemini live') {
+        return 'Ultra Realtime';
+      }
+    }
+
+    // 5. Fallback for older S2S agents where all S2S config fields are null/missing
+    return 'Vani Ultra';
   }
 
   factory Agent.fromJson(Map<String, dynamic> json) {
+    final rawTtsNumStep =
+        json['tts_num_step'] ?? json['ttsNumStep'] ?? json['tts_num_steps'];
+    final rawTtsSpeed = json['tts_speed'] ?? json['ttsSpeed'];
+
     return Agent(
       id: json['id'] as String? ?? '',
       userId: json['user_id'] as String? ?? '',
@@ -137,21 +154,27 @@ class Agent {
       speechToSpeechProvider:
           (json['speech_to_speech_provider'] ??
                   json['speechToSpeechProvider'] ??
+                  json['speech_to_speech'] ??
+                  json['speechToSpeech'] ??
                   json['s2s_provider'] ??
-                  json['s2sProvider'])
+                  json['s2sProvider'] ??
+                  json['provider'])
               as String?,
       voiceEngine:
           (json['voice_engine'] ??
                   json['voiceEngine'] ??
                   json['engine_type'] ??
-                  json['engineType'])
+                  json['engineType'] ??
+                  json['agent_type'] ??
+                  json['agentType'] ??
+                  json['type'])
               as String?,
       geminiLiveVoice: json['gemini_live_voice'] as String?,
       geminiLiveLanguage: json['gemini_live_language'] as String?,
       greetingType: json['greeting_type'] as String? ?? 'fixed',
       greetingLine: json['greeting_line'] as String?,
       agentPrompt: json['agent_prompt'] as String?,
-      s2sPromptConfig: json['s2s_prompt_config'] as Map<String, dynamic>?,
+      s2sPromptConfig: (json['s2s_prompt_config'] ?? json['s2sPromptConfig']) as Map<String, dynamic>?,
       localFallbackPrompt: json['local_fallback_prompt'] as String?,
       analysisPrompt: json['analysis_prompt'] as String?,
       analysisConfig: json['analysis_config'] as Map<String, dynamic>?,
@@ -162,7 +185,9 @@ class Agent {
       knowledgeBaseIds: (json['knowledge_base_ids'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
-      ttsSpeed: (json['tts_speed'] as num?)?.toDouble() ?? 1.0,
+      ttsSpeed: (rawTtsSpeed as num?)?.toDouble() ?? 1.0,
+      hasTtsSpeed: rawTtsSpeed != null,
+      ttsNumStep: rawTtsNumStep is num ? rawTtsNumStep.toInt() : null,
       allowInterruptions: json['allow_interruptions'] as bool? ?? false,
       backgroundMusic: json['background_music'] as bool? ?? false,
       debugLogging: json['debug_logging'] as bool? ?? false,
@@ -200,7 +225,8 @@ class Agent {
       'analysis_config': analysisConfig,
       'transcription_languages': transcriptionLanguages,
       'knowledge_base_ids': knowledgeBaseIds,
-      'tts_speed': ttsSpeed,
+      if (hasTtsSpeed) 'tts_speed': ttsSpeed,
+      'tts_num_step': ttsNumStep,
       'allow_interruptions': allowInterruptions,
       'background_music': backgroundMusic,
       'debug_logging': debugLogging,
@@ -238,6 +264,8 @@ class Agent {
     List<String>? transcriptionLanguages,
     List<String>? knowledgeBaseIds,
     double? ttsSpeed,
+    bool? hasTtsSpeed,
+    int? ttsNumStep,
     bool? allowInterruptions,
     bool? backgroundMusic,
     bool? debugLogging,
@@ -275,6 +303,8 @@ class Agent {
           transcriptionLanguages ?? this.transcriptionLanguages,
       knowledgeBaseIds: knowledgeBaseIds ?? this.knowledgeBaseIds,
       ttsSpeed: ttsSpeed ?? this.ttsSpeed,
+      hasTtsSpeed: hasTtsSpeed ?? this.hasTtsSpeed,
+      ttsNumStep: ttsNumStep ?? this.ttsNumStep,
       allowInterruptions: allowInterruptions ?? this.allowInterruptions,
       backgroundMusic: backgroundMusic ?? this.backgroundMusic,
       debugLogging: debugLogging ?? this.debugLogging,

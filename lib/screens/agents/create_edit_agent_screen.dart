@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vani_app/config/theme.dart';
+import 'package:vani_app/data/services/agents_api_service.dart';
 import 'package:vani_app/models/agent_model.dart';
 import 'package:vani_app/models/knowledge_base_model.dart';
 import 'package:vani_app/presentation/providers/agents_provider.dart';
@@ -36,6 +37,9 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
   late TextEditingController _newKbNameController;
   late TextEditingController _newKbTextController;
   double _omniVoiceSpeechSpeed = 1.0;
+  int _selectedTtsNumStep = 16;
+  bool _isLoadingProfiles = false;
+  List<Map<String, dynamic>> _omnivoiceProfiles = [];
 
   // Focus nodes to manage mutual exclusivity of greetings
   final FocusNode _fixedGreetingFocusNode = FocusNode();
@@ -106,6 +110,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
   @override
   void initState() {
     super.initState();
+    _loadOmnivoiceProfiles();
 
     // Initialize controllers with existing values if editing
     _nameController = TextEditingController(text: widget.agent?.name ?? '');
@@ -163,6 +168,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
     }
     _vaniUltraPromptController = TextEditingController(text: initialS2sPrompt);
     _omniVoiceSpeechSpeed = widget.agent?.ttsSpeed ?? 1.0;
+    _selectedTtsNumStep = widget.agent?.ttsNumStep ?? 16;
 
     _selectedKnowledgeBaseIds = widget.agent?.knowledgeBaseIds ?? [];
 
@@ -328,7 +334,109 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
       _isActive = true;
       _enableVideoAvatar = false;
       _analysisConfig = null;
+      _omniVoiceSpeechSpeed = 1.0;
+      _selectedTtsNumStep = 16;
     });
+  }
+
+  Future<void> _loadOmnivoiceProfiles() async {
+    if (_isLoadingProfiles) return;
+    setState(() {
+      _isLoadingProfiles = true;
+    });
+    try {
+      final response = await ref.read(agentsApiServiceProvider).getOmnivoiceProfiles();
+      if (mounted) {
+        setState(() {
+          _omnivoiceProfiles = List<Map<String, dynamic>>.from(
+            response.map((e) => Map<String, dynamic>.from(e as Map)),
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load omnivoice profiles: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingProfiles = false;
+        });
+      }
+    }
+  }
+
+  List<DropdownMenuItem<String>> _buildOmnivoiceVoiceItems() {
+    final List<DropdownMenuItem<String>> items = [];
+
+    // Add the default built-in voice first
+    if (_selectedGeminiLiveLanguage == 'hi-IN') {
+      items.add(
+        const DropdownMenuItem(
+          value: 'hindi_agent',
+          child: Text(
+            'Hindi Female (Default)',
+            style: TextStyle(fontSize: 11.5),
+          ),
+        ),
+      );
+    } else if (_selectedGeminiLiveLanguage == 'te-IN') {
+      items.add(
+        const DropdownMenuItem(
+          value: 'telugu_agent',
+          child: Text(
+            'Telugu (Default)',
+            style: TextStyle(fontSize: 11.5),
+          ),
+        ),
+      );
+    } else {
+      items.add(
+        const DropdownMenuItem(
+          value: 'english_agent',
+          child: Text(
+            'English (Default)',
+            style: TextStyle(fontSize: 11.5),
+          ),
+        ),
+      );
+    }
+
+    // Add dynamically loaded profiles for the selected language
+    for (final profile in _omnivoiceProfiles) {
+      final lang = profile['language'] as String?;
+      final actor = profile['actor'] as String?;
+      final displayName = profile['display_name'] as String?;
+
+      if (lang == _selectedGeminiLiveLanguage && actor != null) {
+        // Avoid duplicates with default agents
+        if (actor != 'hindi_agent' && actor != 'telugu_agent' && actor != 'english_agent') {
+          items.add(
+            DropdownMenuItem(
+              value: actor,
+              child: Text(
+                displayName ?? actor,
+                style: const TextStyle(fontSize: 11.5),
+              ),
+            ),
+          );
+        }
+      }
+    }
+
+    // If the current value is not in the items, add it defensively to avoid Flutter assertion crashes
+    final hasCurrentValue = items.any((item) => item.value == _selectedGeminiLiveVoice);
+    if (!hasCurrentValue && _selectedGeminiLiveVoice != null) {
+      items.add(
+        DropdownMenuItem(
+          value: _selectedGeminiLiveVoice,
+          child: Text(
+            _selectedGeminiLiveVoice!,
+            style: const TextStyle(fontSize: 11.5),
+          ),
+        ),
+      );
+    }
+
+    return items;
   }
 
   Future<void> _generateAnalysisPrompt() async {
@@ -461,24 +569,28 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
       String? speechToSpeechProvider;
       String? geminiLiveVoice;
       String? geminiLiveLanguage;
-      String ttsProvider = _selectedTtsProvider;
+      String? ttsProvider = _selectedTtsProvider;
       String voice = _selectedVoice;
       String ttsLanguage = _selectedTtsLanguage;
 
       if (_selectedVoiceEngine == 'Vani Ultra') {
-        speechToSpeechProvider = 'gemini_live';
+        speechToSpeechProvider = 'speechgpu';
         geminiLiveVoice = _selectedGeminiLiveVoice;
         geminiLiveLanguage = _selectedGeminiLiveLanguage;
-        ttsProvider = 'google';
-        voice = 'en-us-neural2-f';
-        ttsLanguage = 'en-US';
+        ttsProvider = null;
+        voice = _selectedGeminiLiveVoice ?? 'Puck';
+        ttsLanguage = _selectedGeminiLiveLanguage != null
+            ? _selectedGeminiLiveLanguage!.split('-')[0]
+            : 'en';
       } else if (_selectedVoiceEngine == 'Ultra Realtime') {
-        speechToSpeechProvider = 'openai_realtime';
-        geminiLiveVoice = null;
-        geminiLiveLanguage = null;
-        ttsProvider = 'google';
-        voice = 'en-us-neural2-f';
-        ttsLanguage = 'en-US';
+        speechToSpeechProvider = 'gemini';
+        geminiLiveVoice = _selectedGeminiLiveVoice;
+        geminiLiveLanguage = _selectedGeminiLiveLanguage;
+        ttsProvider = null;
+        voice = _selectedGeminiLiveVoice ?? 'Puck';
+        ttsLanguage = _selectedGeminiLiveLanguage != null
+            ? _selectedGeminiLiveLanguage!.split('-')[0]
+            : 'en';
       } else {
         speechToSpeechProvider = null;
         geminiLiveVoice = null;
@@ -516,11 +628,11 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
           _selectedVoiceEngine == 'Vani Ultra' ||
           _selectedVoiceEngine == 'Ultra Realtime';
       final s2sConfigProvider = _selectedVoiceEngine == 'Ultra Realtime'
-          ? 'openai_realtime'
-          : 'gemini_live';
+          ? 'gemini'
+          : 'speechgpu';
       final s2sGeneratorProvider = _selectedVoiceEngine == 'Ultra Realtime'
-          ? 'openai'
-          : 'gemini';
+          ? 'gemini'
+          : 'speechgpu';
       final promptText = isRealtimeEngine
           ? _vaniUltraPromptController.text.trim()
           : _agentPromptController.text.trim();
@@ -532,6 +644,8 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
         'generator_provider': s2sGeneratorProvider,
         'voice_engine': _selectedVoiceEngine,
         'engine_type': _selectedVoiceEngine,
+        'voice': voice,
+        'realtime_voice': voice,
         'prompt': promptText,
         'system_prompt': promptText,
         'systemPrompt': promptText,
@@ -547,17 +661,42 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
         },
         's2s': {'provider': s2sConfigProvider, 'system_prompt': promptText},
         if (_selectedVoiceEngine == 'Vani Ultra') ...{
-          'gemini': {'provider': 'gemini', 'system_prompt': promptText},
-          'gemini_live': {
-            'provider': 'gemini_live',
+          'speechgpu': {
+            'provider': 'speechgpu',
             'system_prompt': promptText,
+            'voice': geminiLiveVoice,
+            'language': geminiLiveLanguage,
+            'tts_speed': 1.0,
+            'tts_num_step': _selectedTtsNumStep,
+            'user_edited': true,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          },
+          'gemini': {
+            'provider': 'gemini',
+            'system_prompt': '',
+            'voice': 'Charon',
+            'language': 'en-US',
+            'tts_speed': 1.0,
           },
         },
         if (_selectedVoiceEngine == 'Ultra Realtime') ...{
-          'openai': {'provider': 'openai', 'system_prompt': promptText},
-          'openai_realtime': {
-            'provider': 'openai_realtime',
+          'gemini': {
+            'provider': 'gemini',
             'system_prompt': promptText,
+            'user_edited': true,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+            'voice': geminiLiveVoice,
+            'language': geminiLiveLanguage,
+            'tts_speed': 1.0,
+            'tts_num_step': 16,
+          },
+          'speechgpu': {
+            'provider': 'speechgpu',
+            'system_prompt': '',
+            'voice': 'english_agent',
+            'language': 'en-IN',
+            'tts_speed': 1.0,
+            'tts_num_step': 16,
           },
         },
         'ultra_fast': {
@@ -594,7 +733,10 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
         'knowledge_base_ids': _selectedKnowledgeBaseIds,
         'tts_speed': _selectedVoiceEngine == 'Vani Ultra'
             ? _omniVoiceSpeechSpeed
-            : (double.tryParse(_ttsSpeedController.text) ?? 1.0),
+            : _selectedVoiceEngine == 'Classic Pipeline'
+            ? (double.tryParse(_ttsSpeedController.text) ?? 1.0)
+            : null,
+        'tts_num_step': _selectedVoiceEngine == 'Vani Ultra' ? _selectedTtsNumStep : null,
         's2s_prompt_config': isRealtimeEngine ? realtimePromptConfig : {},
         'system_prompt': isRealtimeEngine ? promptText : null,
         'systemPrompt': isRealtimeEngine ? promptText : null,
@@ -1086,7 +1228,9 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                               foregroundColor: const Color(
                                 0xFF0F172A,
                               ), // slate-900
-                              side: const BorderSide(color: AppTheme.borderGrey),
+                              side: const BorderSide(
+                                color: AppTheme.borderGrey,
+                              ),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 14,
@@ -1664,7 +1808,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                               contentPadding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal: 12,
-                                                    vertical: 10,
+                                                    vertical: 16,
                                                   ),
                                               border: OutlineInputBorder(
                                                 borderRadius:
@@ -1689,8 +1833,8 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                                 ),
                                               ),
                                             ),
-                                            items: [
-                                              const DropdownMenuItem(
+                                            items: const [
+                                              DropdownMenuItem(
                                                 value: 'en-IN',
                                                 child: Text(
                                                   'English (India)',
@@ -1699,25 +1843,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                                   ),
                                                 ),
                                               ),
-                                              const DropdownMenuItem(
-                                                value: 'en-US',
-                                                child: Text(
-                                                  'English (US)',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ),
-                                              const DropdownMenuItem(
-                                                value: 'en-GB',
-                                                child: Text(
-                                                  'English (UK)',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ),
-                                              const DropdownMenuItem(
+                                              DropdownMenuItem(
                                                 value: 'hi-IN',
                                                 child: Text(
                                                   'Hindi (India)',
@@ -1726,24 +1852,34 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                                   ),
                                                 ),
                                               ),
-                                              const DropdownMenuItem(
-                                                value: 'es-ES',
+                                              DropdownMenuItem(
+                                                value: 'te-IN',
                                                 child: Text(
-                                                  'Spanish (Spain)',
+                                                  'Telugu (India)',
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                   ),
                                                 ),
                                               ),
                                             ],
-                                            onChanged: (value) {
-                                              if (value != null)
-                                                setState(
-                                                  () =>
-                                                      _selectedGeminiLiveLanguage =
-                                                          value,
-                                                );
-                                            },
+                                             onChanged: (value) {
+                                               if (value != null) {
+                                                 setState(() {
+                                                   _selectedGeminiLiveLanguage =
+                                                       value;
+                                                   if (value == 'hi-IN') {
+                                                     _selectedGeminiLiveVoice =
+                                                         'hindi_agent';
+                                                   } else if (value == 'te-IN') {
+                                                     _selectedGeminiLiveVoice =
+                                                         'telugu_agent';
+                                                   } else {
+                                                     _selectedGeminiLiveVoice =
+                                                         'english_agent';
+                                                   }
+                                                 });
+                                               }
+                                             },
                                           ),
                                         ],
                                       ),
@@ -1767,7 +1903,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                               contentPadding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal: 12,
-                                                    vertical: 10,
+                                                    vertical: 16,
                                                   ),
                                               border: OutlineInputBorder(
                                                 borderRadius:
@@ -1792,60 +1928,14 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                                 ),
                                               ),
                                             ),
-                                            items: [
-                                              const DropdownMenuItem(
-                                                value: 'Puck',
-                                                child: Text(
-                                                  'English (Default)',
-                                                  style: TextStyle(
-                                                    fontSize: 11.5,
-                                                  ),
-                                                ),
-                                              ),
-                                              const DropdownMenuItem(
-                                                value: 'Aoede',
-                                                child: Text(
-                                                  'Maya (Female)',
-                                                  style: TextStyle(
-                                                    fontSize: 11.5,
-                                                  ),
-                                                ),
-                                              ),
-                                              const DropdownMenuItem(
-                                                value: 'Kore',
-                                                child: Text(
-                                                  'Kore (Female)',
-                                                  style: TextStyle(
-                                                    fontSize: 11.5,
-                                                  ),
-                                                ),
-                                              ),
-                                              const DropdownMenuItem(
-                                                value: 'Charon',
-                                                child: Text(
-                                                  'Charon (Male)',
-                                                  style: TextStyle(
-                                                    fontSize: 11.5,
-                                                  ),
-                                                ),
-                                              ),
-                                              const DropdownMenuItem(
-                                                value: 'Fenrir',
-                                                child: Text(
-                                                  'Fenrir (Male)',
-                                                  style: TextStyle(
-                                                    fontSize: 11.5,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
+                                            items: _buildOmnivoiceVoiceItems(),
                                             onChanged: (value) {
-                                              if (value != null)
-                                                setState(
-                                                  () =>
-                                                      _selectedGeminiLiveVoice =
-                                                          value,
-                                                );
+                                              if (value != null) {
+                                                setState(() {
+                                                  _selectedGeminiLiveVoice =
+                                                      value;
+                                                });
+                                              }
                                             },
                                           ),
                                         ],
@@ -1947,12 +2037,105 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                 ),
                                 const SizedBox(height: 12),
 
+                                // Vani TTS Quality
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        _buildTextFieldLabel(
+                                          'Vani TTS Quality ',
+                                        ),
+                                        const Expanded(
+                                          child: Text(
+                                            '(higher = clearer audio, slightly more latency)',
+                                            style: TextStyle(
+                                              fontSize: 9.5,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    DropdownButtonFormField<int>(
+                                      isExpanded: true,
+                                      value: _selectedTtsNumStep,
+                                      decoration: InputDecoration(
+                                        filled: true,
+                                        fillColor: AppTheme.lightGrey,
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 14,
+                                            ),
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          borderSide: const BorderSide(
+                                            color: AppTheme.borderGrey,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          borderSide: const BorderSide(
+                                            color: AppTheme.borderGrey,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFF6D28D9),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                      items: const [
+                                        DropdownMenuItem(
+                                          value: 8,
+                                          child: Text(
+                                            'Fast — 8 steps',
+                                            style: TextStyle(fontSize: 13),
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 16,
+                                          child: Text(
+                                            'Standard — 16 steps (default)',
+                                            style: TextStyle(fontSize: 13),
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 32,
+                                          child: Text(
+                                            'High Quality — 32 steps',
+                                            style: TextStyle(fontSize: 13),
+                                          ),
+                                        ),
+                                      ],
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setState(() {
+                                            _selectedTtsNumStep = value;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
                                 // Speech Recognition Keywords
-                                Row(
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _buildTextFieldLabel(
-                                      'Speech Recognition Keywords ',
+                                      'Speech Recognition Keywords',
                                     ),
+                                    const SizedBox(height: 2),
                                     const Text(
                                       '(optional · names, brands, jargon)',
                                       style: TextStyle(
@@ -2236,6 +2419,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                           ),
                                           const SizedBox(height: 6),
                                           DropdownButtonFormField<String>(
+                                            isExpanded: true,
                                             value: _selectedGeminiLiveLanguage,
                                             decoration: InputDecoration(
                                               filled: true,
@@ -2243,7 +2427,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                               contentPadding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal: 12,
-                                                    vertical: 10,
+                                                    vertical: 16,
                                                   ),
                                               border: OutlineInputBorder(
                                                 borderRadius:
@@ -2336,6 +2520,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                           _buildTextFieldLabel('Select Voices'),
                                           const SizedBox(height: 6),
                                           DropdownButtonFormField<String>(
+                                            isExpanded: true,
                                             value: _selectedGeminiLiveVoice,
                                             decoration: InputDecoration(
                                               filled: true,
@@ -2343,7 +2528,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                                               contentPadding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal: 12,
-                                                    vertical: 10,
+                                                    vertical: 16,
                                                   ),
                                               border: OutlineInputBorder(
                                                 borderRadius:
@@ -2696,9 +2881,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                             decoration: BoxDecoration(
                               color: AppTheme.lightGrey,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: AppTheme.borderGrey,
-                              ),
+                              border: Border.all(color: AppTheme.borderGrey),
                             ),
                             child: _selectedKnowledgeBaseIds.isEmpty
                                 ? const Align(
@@ -3485,6 +3668,28 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
         onTap: () {
           setState(() {
             _selectedVoiceEngine = title;
+            // Update default voice and language when switching engines
+            if (title == 'Vani Ultra') {
+              _loadOmnivoiceProfiles();
+              if (_selectedGeminiLiveLanguage != 'en-IN' &&
+                  _selectedGeminiLiveLanguage != 'hi-IN' &&
+                  _selectedGeminiLiveLanguage != 'te-IN') {
+                _selectedGeminiLiveLanguage = 'en-IN';
+              }
+              if (_selectedGeminiLiveLanguage == 'hi-IN') {
+                _selectedGeminiLiveVoice = 'hindi_agent';
+              } else if (_selectedGeminiLiveLanguage == 'te-IN') {
+                _selectedGeminiLiveVoice = 'telugu_agent';
+              } else {
+                _selectedGeminiLiveVoice = 'english_agent';
+              }
+            } else if (title == 'Ultra Realtime') {
+              if (_selectedGeminiLiveVoice == 'english_agent' ||
+                  _selectedGeminiLiveVoice == 'hindi_agent' ||
+                  _selectedGeminiLiveVoice == 'telugu_agent') {
+                _selectedGeminiLiveVoice = 'Puck';
+              }
+            }
           });
         },
         child: Container(
@@ -3492,9 +3697,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            border: isSelected
-                ? Border.all(color: AppTheme.borderGrey)
-                : null,
+            border: isSelected ? Border.all(color: AppTheme.borderGrey) : null,
             boxShadow: isSelected
                 ? [
                     BoxShadow(
@@ -3511,9 +3714,7 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected
-                    ? AppTheme.darkGrey
-                    : const Color(0xFF64748B),
+                color: isSelected ? AppTheme.darkGrey : const Color(0xFF64748B),
               ),
             ),
           ),

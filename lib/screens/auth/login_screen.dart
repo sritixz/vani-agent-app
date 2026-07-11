@@ -175,10 +175,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   color: AppTheme.lightGreen,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(
-                  Icons.home,
-                  color: AppTheme.primaryGreen,
-                  size: 40,
+                padding: const EdgeInsets.all(16),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 32),
