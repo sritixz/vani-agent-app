@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:vani_app/config/theme.dart';
+import 'package:vani_app/core/exceptions/app_exception.dart';
+import 'package:vani_app/domain/repositories/auth_repository.dart';
 import 'package:vani_app/presentation/providers/auth_provider.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -19,6 +22,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _isLoadingGoogle = false;
   bool _agreedToTerms = false;
 
   @override
@@ -160,6 +164,53 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
   }
 
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isLoadingGoogle = true);
+    try {
+      // Step 1: Get the Google OAuth URL from the backend
+      final authRepository = ref.read(authRepositoryProvider);
+      final authUrl = await authRepository.getGoogleAuthUrl();
+
+      // Step 2: Open the URL in the browser.
+      // The backend will redirect back to the app via deep link after auth.
+      final uri = Uri.parse(authUrl);
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw Exception('Could not open Google sign-in page');
+      }
+
+      // After this point the OS takes over. The result comes back through
+      // the deep-link route '/auth/google/callback' handled in main.dart →
+      // GoogleCallbackScreen, which calls authProvider.googleLogin().
+    } catch (e) {
+      if (mounted) {
+        String errorMessage;
+        if (e is AppException) {
+          errorMessage = e.message;
+        } else {
+          errorMessage = e.toString();
+          if (errorMessage.contains('network_error') ||
+              errorMessage.contains('SocketException')) {
+            errorMessage = 'Network error. Please check your connection.';
+          } else if (errorMessage.contains('Connection refused')) {
+            errorMessage = 'Cannot connect to server. Please try again later.';
+          }
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $errorMessage'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingGoogle = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -201,6 +252,66 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isLoadingGoogle ? null : _handleGoogleLogin,
+                  icon: _isLoadingGoogle
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppTheme.darkGrey,
+                            ),
+                          ),
+                        )
+                      : Image.asset(
+                          'assets/images/google_logo.png',
+                          width: 20,
+                          height: 20,
+                        ),
+                  label: Text(
+                    _isLoadingGoogle ? 'Loading...' : 'Continue with Google',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.surfaceCard,
+                    foregroundColor: AppTheme.darkGrey,
+                    side: const BorderSide(color: AppTheme.borderGrey),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      color: AppTheme.borderGrey,
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'OR EMAIL',
+                      style: TextStyle(
+                        color: AppTheme.mediumGrey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      color: AppTheme.borderGrey,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -485,7 +596,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                            color: AppTheme.surfaceCard,
                           ),
                         ),
                 ),

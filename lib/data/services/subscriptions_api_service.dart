@@ -29,6 +29,32 @@ class SubscriptionsApiService {
     );
     return CurrentSubscriptionModel.fromJson(response.data);
   }
+
+  Future<Map<String, dynamic>> upgradeTier({
+    required String tierName,
+  }) async {
+    final response = await _dioClient.post(
+      ApiEndpoints.upgradeTier,
+      data: {'tier_name': tierName},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> verifyTierUpgrade({
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+  }) async {
+    final response = await _dioClient.post(
+      ApiEndpoints.verifyTierUpgrade,
+      data: {
+        'razorpay_order_id': razorpayOrderId,
+        'razorpay_payment_id': razorpayPaymentId,
+        'razorpay_signature': razorpaySignature,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
 }
 
 // Provider

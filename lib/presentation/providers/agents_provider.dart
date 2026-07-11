@@ -10,7 +10,8 @@ final _logger = Logger();
 // Agents State
 class AgentsState {
   final List<Agent> agents;
-  final Map<String, String> phoneNumbersMap; // phoneNumberId -> actual phone number
+  final Map<String, String>
+  phoneNumbersMap; // phoneNumberId -> actual phone number
   final bool isLoading;
   final String? error;
 
@@ -34,7 +35,7 @@ class AgentsState {
       error: error,
     );
   }
-  
+
   // Helper method to get phone number for an agent
   String getPhoneNumber(Agent agent) {
     if (agent.phoneNumberId == null) return 'Unassigned';
@@ -47,10 +48,8 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
   final AgentsApiService _agentsApiService;
   final PhoneNumbersApiService _phoneNumbersApiService;
 
-  AgentsNotifier(
-    this._agentsApiService,
-    this._phoneNumbersApiService,
-  ) : super(AgentsState());
+  AgentsNotifier(this._agentsApiService, this._phoneNumbersApiService)
+    : super(AgentsState());
 
   Future<void> loadAgents() async {
     state = state.copyWith(isLoading: true, error: null);
@@ -58,7 +57,7 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
       _logger.d('Fetching agents...');
       final agents = await _agentsApiService.getAgents();
       _logger.d('Fetched ${agents.length} agents');
-      
+
       // Fetch phone numbers to create a mapping
       Map<String, String> phoneNumbersMap = {};
       try {
@@ -66,14 +65,16 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
         final phoneNumbers = await _phoneNumbersApiService.getPhoneNumbers();
         phoneNumbersMap = {
           for (var phone in phoneNumbers)
-            phone.id: phone.phoneNumber ?? phone.id
+            phone.id: phone.phoneNumber ?? phone.id,
         };
-        _logger.d('Created phone numbers map with ${phoneNumbersMap.length} entries');
+        _logger.d(
+          'Created phone numbers map with ${phoneNumbersMap.length} entries',
+        );
       } catch (e) {
         _logger.w('Failed to fetch phone numbers for mapping: $e');
         // Continue without phone number mapping
       }
-      
+
       state = state.copyWith(
         agents: agents,
         phoneNumbersMap: phoneNumbersMap,
@@ -82,10 +83,7 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
       );
     } on AppException catch (e) {
       _logger.e('AppException: ${e.message}');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.message,
-      );
+      state = state.copyWith(isLoading: false, error: e.message);
     } catch (e) {
       _logger.e('Error loading agents: $e');
       state = state.copyWith(
@@ -98,7 +96,7 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
   Future<void> toggleAgentStatus(String agentId, bool isActive) async {
     try {
       _logger.d('Toggling agent $agentId status to $isActive');
-      
+
       // Optimistically update the UI
       final updatedAgents = state.agents.map((agent) {
         if (agent.id == agentId) {
@@ -106,7 +104,7 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
         }
         return agent;
       }).toList();
-      
+
       state = state.copyWith(agents: updatedAgents);
 
       // Make API call
@@ -130,7 +128,7 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
       _logger.d('Creating new agent...');
       final newAgent = await _agentsApiService.createAgent(agentData);
       _logger.d('Agent created successfully: ${newAgent.id}');
-      
+
       // Add to state
       final updatedAgents = [...state.agents, newAgent];
       state = state.copyWith(agents: updatedAgents);
@@ -145,17 +143,23 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
     }
   }
 
-  Future<void> updateAgent(String agentId, Map<String, dynamic> agentData) async {
+  Future<void> updateAgent(
+    String agentId,
+    Map<String, dynamic> agentData,
+  ) async {
     try {
       _logger.d('=== AGENTS PROVIDER UPDATE ===');
       _logger.d('Agent ID: $agentId');
       _logger.d('Update data: $agentData');
-      
-      final updatedAgent = await _agentsApiService.updateAgent(agentId, agentData);
-      
+
+      final updatedAgent = await _agentsApiService.updateAgent(
+        agentId,
+        agentData,
+      );
+
       _logger.d('Agent updated successfully from API');
       _logger.d('Updated agent data: ${updatedAgent.toJson()}');
-      
+
       // Update in state
       final updatedAgents = state.agents.map((agent) {
         if (agent.id == agentId) {
@@ -164,7 +168,7 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
         }
         return agent;
       }).toList();
-      
+
       _logger.d('Updating state with ${updatedAgents.length} agents');
       state = state.copyWith(agents: updatedAgents);
       _logger.d('State updated successfully');
@@ -190,9 +194,11 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
       _logger.d('Deleting agent $agentId');
       await _agentsApiService.deleteAgent(agentId);
       _logger.d('Agent deleted successfully');
-      
+
       // Remove from state
-      final updatedAgents = state.agents.where((agent) => agent.id != agentId).toList();
+      final updatedAgents = state.agents
+          .where((agent) => agent.id != agentId)
+          .toList();
       state = state.copyWith(agents: updatedAgents);
     } on AppException catch (e) {
       _logger.e('AppException: ${e.message}');
@@ -206,7 +212,9 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
   Future<String> generateAnalysisPrompt(String agentPrompt) async {
     try {
       _logger.d('Generating analysis prompt...');
-      final analysisPrompt = await _agentsApiService.generateAnalysisPrompt(agentPrompt);
+      final analysisPrompt = await _agentsApiService.generateAnalysisPrompt(
+        agentPrompt,
+      );
       _logger.d('Analysis prompt generated successfully');
       return analysisPrompt;
     } on AppException catch (e) {
@@ -220,10 +228,14 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
     }
   }
 
-  Future<Map<String, dynamic>> generateAnalysisConfig(String agentPrompt) async {
+  Future<Map<String, dynamic>> generateAnalysisConfig(
+    String agentPrompt,
+  ) async {
     try {
       _logger.d('Generating analysis config...');
-      final analysisConfig = await _agentsApiService.generateAnalysisConfig(agentPrompt);
+      final analysisConfig = await _agentsApiService.generateAnalysisConfig(
+        agentPrompt,
+      );
       _logger.d('Analysis config generated successfully');
       return analysisConfig;
     } on AppException catch (e) {
@@ -237,13 +249,64 @@ class AgentsNotifier extends StateNotifier<AgentsState> {
     }
   }
 
+  Future<Map<String, dynamic>> generateS2sSystemPrompt({
+    required String provider,
+    required String agentPrompt,
+    String? greetingLine,
+    required String greetingType,
+    required String language,
+    required List<String> knowledgeBaseIds,
+  }) async {
+    try {
+      _logger.d('Generating S2S system prompt...');
+      final promptData = await _agentsApiService.generateS2sSystemPrompt(
+        provider: provider,
+        agentPrompt: agentPrompt,
+        greetingLine: greetingLine,
+        greetingType: greetingType,
+        language: language,
+        knowledgeBaseIds: knowledgeBaseIds,
+      );
+      _logger.d('S2S system prompt generated successfully');
+      return promptData;
+    } on AppException catch (e) {
+      _logger.e('AppException: ${e.message}');
+      state = state.copyWith(error: e.message);
+      rethrow;
+    } catch (e) {
+      _logger.e('Error generating S2S system prompt: $e');
+      state = state.copyWith(error: 'Failed to generate realtime prompt');
+      rethrow;
+    }
+  }
+
+  Future<String> updatePromptGeneratorSystemPrompt(String systemPrompt) async {
+    try {
+      _logger.d('Updating prompt generator system prompt...');
+      final updatedPrompt = await _agentsApiService
+          .updatePromptGeneratorSystemPrompt(systemPrompt);
+      _logger.d('Prompt generator system prompt updated successfully');
+      return updatedPrompt;
+    } on AppException catch (e) {
+      _logger.e('AppException: ${e.message}');
+      state = state.copyWith(error: e.message);
+      rethrow;
+    } catch (e) {
+      _logger.e('Error updating prompt generator system prompt: $e');
+      state = state.copyWith(error: 'Failed to update realtime system prompt');
+      rethrow;
+    }
+  }
+
   void clearError() {
     state = state.copyWith(error: null);
   }
 }
 
 // Provider
-final agentsProvider = StateNotifierProvider<AgentsNotifier, AgentsState>((ref) {
+final agentsProvider = StateNotifierProvider<AgentsNotifier, AgentsState>((
+  ref,
+) {
   final agentsApiService = ref.watch(agentsApiServiceProvider);
   final phoneNumbersApiService = ref.watch(phoneNumbersApiServiceProvider);
   return AgentsNotifier(agentsApiService, phoneNumbersApiService);

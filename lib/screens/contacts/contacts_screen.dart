@@ -548,7 +548,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: AppTheme.surfaceCard,
                 ),
               ),
             ),

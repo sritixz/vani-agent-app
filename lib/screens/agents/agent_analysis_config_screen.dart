@@ -168,41 +168,7 @@ class _AgentAnalysisConfigScreenState extends ConsumerState<AgentAnalysisConfigS
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Analysis Configuration',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.darkGrey,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Configure how call analysis should be performed',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: AppTheme.mediumGrey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
+
 
               // Generate Button
               SizedBox(
@@ -231,7 +197,7 @@ class _AgentAnalysisConfigScreenState extends ConsumerState<AgentAnalysisConfigS
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: AppTheme.surfaceCard,
                     ),
                   ),
                 ),
@@ -408,7 +374,7 @@ class _AgentAnalysisConfigScreenState extends ConsumerState<AgentAnalysisConfigS
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          color: AppTheme.surfaceCard,
                         ),
                       ),
                     ),

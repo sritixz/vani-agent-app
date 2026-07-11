@@ -73,7 +73,7 @@ class _CreateWhatsAppScreenState extends ConsumerState<CreateWhatsAppScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceCard,
         foregroundColor: AppTheme.darkGrey,
         elevation: 0,
         bottom: PreferredSize(
@@ -175,7 +175,7 @@ class _CreateWhatsAppScreenState extends ConsumerState<CreateWhatsAppScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -221,7 +221,7 @@ class _CreateWhatsAppScreenState extends ConsumerState<CreateWhatsAppScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -280,7 +280,7 @@ class _CreateWhatsAppScreenState extends ConsumerState<CreateWhatsAppScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -381,7 +381,7 @@ class _CreateWhatsAppScreenState extends ConsumerState<CreateWhatsAppScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -421,7 +421,7 @@ class _CreateWhatsAppScreenState extends ConsumerState<CreateWhatsAppScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -515,7 +515,7 @@ class _CreateWhatsAppScreenState extends ConsumerState<CreateWhatsAppScreen> {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                                  color: AppTheme.surfaceCard,
                                   letterSpacing: 0.5,
                                 ),
                               ),
@@ -555,7 +555,7 @@ class _CreateWhatsAppScreenState extends ConsumerState<CreateWhatsAppScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppTheme.surfaceCard,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: AppTheme.borderGrey),
                           ),
@@ -602,7 +602,7 @@ class _CreateWhatsAppScreenState extends ConsumerState<CreateWhatsAppScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppTheme.surfaceCard,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: AppTheme.borderGrey),
                           ),
@@ -755,7 +755,7 @@ class _CreateWhatsAppScreenState extends ConsumerState<CreateWhatsAppScreen> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                color: AppTheme.surfaceCard,
                               ),
                             ),
                     ),

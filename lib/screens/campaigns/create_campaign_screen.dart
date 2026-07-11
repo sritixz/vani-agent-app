@@ -220,7 +220,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.campaign == null ? 'Create Campaign' : 'Edit Campaign'),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceCard,
         foregroundColor: AppTheme.darkGrey,
         elevation: 0,
       ),
@@ -413,7 +413,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: AppTheme.surfaceCard,
                         ),
                       )
                     : Text(

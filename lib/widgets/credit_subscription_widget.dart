@@ -163,12 +163,12 @@ class _CreditSubscriptionWidgetState
                         ),
                         decoration: BoxDecoration(
                           color: _getStatusColor(
-                            dashboardState.currentSubscription!.status,
+                            dashboardState.currentSubscription!.status ?? 'inactive',
                           ),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          dashboardState.currentSubscription!.status
+                          (dashboardState.currentSubscription!.status ?? 'inactive')
                               .toUpperCase(),
                           style: const TextStyle(
                             color: Colors.white,

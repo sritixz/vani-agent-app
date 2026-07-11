@@ -7,6 +7,7 @@ class Agent {
   final String ttsLanguage;
   final String ttsProvider;
   final String? speechToSpeechProvider;
+  final String? voiceEngine;
   final String? geminiLiveVoice;
   final String? geminiLiveLanguage;
   final String greetingType;
@@ -28,6 +29,7 @@ class Agent {
   final bool isActive;
   final bool enableVideoAvatar;
   final String? simliFaceId;
+  final String? asrVocabulary;
   final String createdAt;
   final String updatedAt;
 
@@ -40,6 +42,7 @@ class Agent {
     required this.ttsLanguage,
     required this.ttsProvider,
     this.speechToSpeechProvider,
+    this.voiceEngine,
     this.geminiLiveVoice,
     this.geminiLiveLanguage,
     this.greetingType = 'fixed',
@@ -61,9 +64,66 @@ class Agent {
     required this.isActive,
     this.enableVideoAvatar = false,
     this.simliFaceId,
+    this.asrVocabulary,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  String get engineType {
+    String normalize(Object? value) =>
+        value?.toString().toLowerCase().trim().replaceAll('-', '_') ?? '';
+
+    final s2s = normalize(speechToSpeechProvider);
+    final engine = normalize(voiceEngine);
+    final configProvider = normalize(s2sPromptConfig?['provider']);
+    final configGeneratorProvider = normalize(
+      s2sPromptConfig?['generator_provider'],
+    );
+    final configS2sProvider = normalize(
+      s2sPromptConfig?['speech_to_speech_provider'] ??
+          s2sPromptConfig?['speechToSpeechProvider'],
+    );
+    final configEngine = normalize(
+      s2sPromptConfig?['voice_engine'] ??
+          s2sPromptConfig?['voiceEngine'] ??
+          s2sPromptConfig?['engine_type'] ??
+          s2sPromptConfig?['engineType'],
+    );
+
+    final explicitSignals = [
+      engine,
+      s2s,
+      configEngine,
+      configProvider,
+      configGeneratorProvider,
+      configS2sProvider,
+    ].where((signal) => signal.isNotEmpty).toList();
+
+    bool isUltraRealtimeSignal(String signal) {
+      return signal == 'ultra realtime' ||
+          signal == 'ultra_realtime' ||
+          signal == 'openai_realtime' ||
+          signal == 'openai' ||
+          signal == 'realtime';
+    }
+
+    bool isVaniUltraSignal(String signal) {
+      return signal == 'vani ultra' ||
+          signal == 'vani_ultra' ||
+          signal == 'gemini_live' ||
+          signal == 'gemini';
+    }
+
+    if (explicitSignals.any(isUltraRealtimeSignal)) {
+      return 'Ultra Realtime';
+    }
+
+    if (explicitSignals.any(isVaniUltraSignal)) {
+      return 'Vani Ultra';
+    }
+
+    return 'Classic Pipeline';
+  }
 
   factory Agent.fromJson(Map<String, dynamic> json) {
     return Agent(
@@ -74,7 +134,18 @@ class Agent {
       voice: json['voice'] as String? ?? '',
       ttsLanguage: json['tts_language'] as String? ?? '',
       ttsProvider: json['tts_provider'] as String? ?? '',
-      speechToSpeechProvider: json['speech_to_speech_provider'] as String?,
+      speechToSpeechProvider:
+          (json['speech_to_speech_provider'] ??
+                  json['speechToSpeechProvider'] ??
+                  json['s2s_provider'] ??
+                  json['s2sProvider'])
+              as String?,
+      voiceEngine:
+          (json['voice_engine'] ??
+                  json['voiceEngine'] ??
+                  json['engine_type'] ??
+                  json['engineType'])
+              as String?,
       geminiLiveVoice: json['gemini_live_voice'] as String?,
       geminiLiveLanguage: json['gemini_live_language'] as String?,
       greetingType: json['greeting_type'] as String? ?? 'fixed',
@@ -84,9 +155,10 @@ class Agent {
       localFallbackPrompt: json['local_fallback_prompt'] as String?,
       analysisPrompt: json['analysis_prompt'] as String?,
       analysisConfig: json['analysis_config'] as Map<String, dynamic>?,
-      transcriptionLanguages: (json['transcription_languages'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
+      transcriptionLanguages:
+          (json['transcription_languages'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList(),
       knowledgeBaseIds: (json['knowledge_base_ids'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
@@ -100,6 +172,7 @@ class Agent {
       isActive: json['is_active'] as bool? ?? false,
       enableVideoAvatar: json['enable_video_avatar'] as bool? ?? false,
       simliFaceId: json['simli_face_id'] as String?,
+      asrVocabulary: json['asr_vocabulary'] as String?,
       createdAt: json['created_at'] as String? ?? '',
       updatedAt: json['updated_at'] as String? ?? '',
     );
@@ -115,6 +188,7 @@ class Agent {
       'tts_language': ttsLanguage,
       'tts_provider': ttsProvider,
       'speech_to_speech_provider': speechToSpeechProvider,
+      'voice_engine': voiceEngine,
       'gemini_live_voice': geminiLiveVoice,
       'gemini_live_language': geminiLiveLanguage,
       'greeting_type': greetingType,
@@ -136,6 +210,7 @@ class Agent {
       'is_active': isActive,
       'enable_video_avatar': enableVideoAvatar,
       'simli_face_id': simliFaceId,
+      'asr_vocabulary': asrVocabulary,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };
@@ -150,6 +225,7 @@ class Agent {
     String? ttsLanguage,
     String? ttsProvider,
     String? speechToSpeechProvider,
+    String? voiceEngine,
     String? geminiLiveVoice,
     String? geminiLiveLanguage,
     String? greetingType,
@@ -171,6 +247,7 @@ class Agent {
     bool? isActive,
     bool? enableVideoAvatar,
     String? simliFaceId,
+    String? asrVocabulary,
     String? createdAt,
     String? updatedAt,
   }) {
@@ -182,7 +259,9 @@ class Agent {
       voice: voice ?? this.voice,
       ttsLanguage: ttsLanguage ?? this.ttsLanguage,
       ttsProvider: ttsProvider ?? this.ttsProvider,
-      speechToSpeechProvider: speechToSpeechProvider ?? this.speechToSpeechProvider,
+      speechToSpeechProvider:
+          speechToSpeechProvider ?? this.speechToSpeechProvider,
+      voiceEngine: voiceEngine ?? this.voiceEngine,
       geminiLiveVoice: geminiLiveVoice ?? this.geminiLiveVoice,
       geminiLiveLanguage: geminiLiveLanguage ?? this.geminiLiveLanguage,
       greetingType: greetingType ?? this.greetingType,
@@ -192,7 +271,8 @@ class Agent {
       localFallbackPrompt: localFallbackPrompt ?? this.localFallbackPrompt,
       analysisPrompt: analysisPrompt ?? this.analysisPrompt,
       analysisConfig: analysisConfig ?? this.analysisConfig,
-      transcriptionLanguages: transcriptionLanguages ?? this.transcriptionLanguages,
+      transcriptionLanguages:
+          transcriptionLanguages ?? this.transcriptionLanguages,
       knowledgeBaseIds: knowledgeBaseIds ?? this.knowledgeBaseIds,
       ttsSpeed: ttsSpeed ?? this.ttsSpeed,
       allowInterruptions: allowInterruptions ?? this.allowInterruptions,
@@ -204,6 +284,7 @@ class Agent {
       isActive: isActive ?? this.isActive,
       enableVideoAvatar: enableVideoAvatar ?? this.enableVideoAvatar,
       simliFaceId: simliFaceId ?? this.simliFaceId,
+      asrVocabulary: asrVocabulary ?? this.asrVocabulary,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

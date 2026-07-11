@@ -145,7 +145,7 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> w
     return Scaffold(
       appBar: AppBar(
         title: const Text('Campaign Details'),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceCard,
         foregroundColor: AppTheme.darkGrey,
         elevation: 0,
         bottom: TabBar(
@@ -359,7 +359,7 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> w
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceCard,
             border: Border(
               bottom: BorderSide(color: AppTheme.borderGrey),
             ),
@@ -381,7 +381,7 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> w
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.surfaceCard,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppTheme.borderGrey),
                       ),
@@ -413,7 +413,7 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> w
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.surfaceCard,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppTheme.borderGrey),
                       ),
@@ -681,7 +681,7 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> w
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppTheme.surfaceCard,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppTheme.borderGrey),
                 ),
@@ -790,7 +790,7 @@ class _SectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceCard,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.borderGrey),
         boxShadow: [
@@ -882,7 +882,7 @@ class _NumberCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceCard,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.borderGrey),
         boxShadow: [

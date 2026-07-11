@@ -85,7 +85,7 @@ class _UpdateCampaignScreenState extends ConsumerState<UpdateCampaignScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Update Campaign'),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceCard,
         foregroundColor: AppTheme.darkGrey,
         elevation: 0,
       ),
@@ -263,7 +263,7 @@ class _UpdateCampaignScreenState extends ConsumerState<UpdateCampaignScreen> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: AppTheme.surfaceCard,
                           ),
                         )
                       : const Text(

@@ -110,7 +110,7 @@ class _WhatsAppInboxScreenState extends ConsumerState<WhatsAppInboxScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceCard,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.darkGrey),
@@ -151,7 +151,7 @@ class _WhatsAppInboxScreenState extends ConsumerState<WhatsAppInboxScreen> {
 
   Widget _buildSearchAndFilters() {
     return Container(
-      color: Colors.white,
+      color: AppTheme.surfaceCard,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Column(
         children: [
@@ -412,7 +412,7 @@ class _WhatsAppInboxScreenState extends ConsumerState<WhatsAppInboxScreen> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: AppTheme.surfaceCard,
                       ),
                     ),
                   ),
@@ -577,7 +577,7 @@ class _WhatsAppInboxScreenState extends ConsumerState<WhatsAppInboxScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceCard,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.borderGrey),
         ),

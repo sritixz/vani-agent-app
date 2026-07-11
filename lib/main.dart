@@ -34,6 +34,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'VaniAgent',
       theme: AppTheme.lightTheme,
+      themeMode: ThemeMode.light,
       debugShowCheckedModeBanner: false,
       home: const SplashScreen(),
       // Named routes for simple screens

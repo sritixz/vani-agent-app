@@ -246,7 +246,7 @@ class _MetaAdsScreenState extends ConsumerState<MetaAdsScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: AppTheme.surfaceCard,
                     ),
                   ),
                 ),
@@ -397,13 +397,13 @@ class _MetaAdsScreenState extends ConsumerState<MetaAdsScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              icon: const Icon(Icons.add, color: Colors.white, size: 18),
+              icon: const Icon(Icons.add, color: AppTheme.surfaceCard, size: 18),
               label: const Text(
                 'Create Campaign',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: AppTheme.surfaceCard,
                 ),
               ),
             ),

@@ -18,6 +18,22 @@ class ConversationModel {
     this.updatedAt,
   });
 
+  ConversationModel copyWith({
+    String? id,
+    String? title,
+    List<MessageModel>? messages,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return ConversationModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      messages: messages ?? this.messages,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   factory ConversationModel.fromJson(Map<String, dynamic> json) =>
       _$ConversationModelFromJson(json);
 

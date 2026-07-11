@@ -15,48 +15,53 @@ class AppBottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: Color(0xFFE0E0E0),
-            width: 1.0,
-          ),
-        ),
+        color: AppTheme.surfaceCard,
+        border: Border(top: BorderSide(color: AppTheme.borderGrey, width: 1.0)),
       ),
       child: BottomNavigationBar(
-      currentIndex: currentIndex,
-      onTap: onTap,
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      selectedItemColor: AppTheme.primaryGreen,
-      unselectedItemColor: AppTheme.inactiveGrey,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard_outlined),
-          activeIcon: Icon(Icons.dashboard),
-          label: 'Dashboard',
+        currentIndex: currentIndex,
+        onTap: onTap,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: AppTheme.surfaceCard,
+        elevation: 0,
+        selectedItemColor: AppTheme.primaryGreen,
+        unselectedItemColor: AppTheme.inactiveGrey,
+        selectedLabelStyle: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.smart_toy_outlined),
-          activeIcon: Icon(Icons.smart_toy),
-          label: 'Agents',
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.campaign_outlined),
-          activeIcon: Icon(Icons.campaign),
-          label: 'Campaigns',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.contacts_outlined),
-          activeIcon: Icon(Icons.contacts),
-          label: 'Contacts',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.history_outlined),
-          activeIcon: Icon(Icons.history),
-          label: 'History',
-        ),
-      ],
-    ),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard_rounded),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.smart_toy_outlined),
+            activeIcon: Icon(Icons.smart_toy_rounded),
+            label: 'Agents',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.campaign_outlined),
+            activeIcon: Icon(Icons.campaign_rounded),
+            label: 'Campaigns',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.contacts_outlined),
+            activeIcon: Icon(Icons.contacts_rounded),
+            label: 'Contacts',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history_outlined),
+            activeIcon: Icon(Icons.history_rounded),
+            label: 'History',
+          ),
+        ],
+      ),
     );
   }
 }

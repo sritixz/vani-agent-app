@@ -32,29 +32,31 @@ class CreditsRepository {
     }
   }
 
-  Future<CreditBalanceModel> purchaseCredits({
-    required double amount,
-    required String paymentMethod,
+  Future<Map<String, dynamic>> initiateCreditPurchase({
+    required String amount,
   }) async {
     try {
-      return await _apiService.purchaseCredits(
-        amount: amount,
-        paymentMethod: paymentMethod,
-      );
+      return await _apiService.initiateCreditPurchase(amount: amount);
     } catch (e) {
       if (e is AppException) rethrow;
-      throw ServerException('Failed to purchase credits: ${e.toString()}');
+      throw ServerException('Failed to initiate credit purchase: ${e.toString()}');
     }
   }
 
-  Future<Map<String, dynamic>> verifyPayment({
-    required String paymentId,
+  Future<Map<String, dynamic>> verifyRazorpayPayment({
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
   }) async {
     try {
-      return await _apiService.verifyPayment(paymentId: paymentId);
+      return await _apiService.verifyRazorpayPayment(
+        razorpayOrderId: razorpayOrderId,
+        razorpayPaymentId: razorpayPaymentId,
+        razorpaySignature: razorpaySignature,
+      );
     } catch (e) {
       if (e is AppException) rethrow;
-      throw ServerException('Failed to verify payment: ${e.toString()}');
+      throw ServerException('Failed to verify Razorpay payment: ${e.toString()}');
     }
   }
 }

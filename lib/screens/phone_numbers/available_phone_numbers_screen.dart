@@ -110,7 +110,7 @@ class _AvailablePhoneNumbersScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppTheme.surfaceCard,
               border: Border(
                 bottom: BorderSide(color: AppTheme.borderGrey),
               ),
@@ -202,7 +202,7 @@ class _AvailablePhoneNumbersScreenState
                         height: 36,
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppTheme.surfaceCard,
                           border: Border.all(color: AppTheme.borderGrey),
                           borderRadius: BorderRadius.circular(6),
                         ),
@@ -419,7 +419,7 @@ class _AvailablePhoneNumbersScreenState
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceCard,
           border: Border.all(color: AppTheme.borderGrey),
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
@@ -586,7 +586,7 @@ class _AvailablePhoneNumbersScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceCard,
         border: Border(
           top: BorderSide(color: AppTheme.borderGrey),
         ),

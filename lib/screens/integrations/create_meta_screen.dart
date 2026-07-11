@@ -82,7 +82,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceCard,
         foregroundColor: AppTheme.darkGrey,
         elevation: 0,
         bottom: PreferredSize(
@@ -184,7 +184,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -230,7 +230,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -290,7 +290,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -369,7 +369,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -408,7 +408,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -447,7 +447,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -486,7 +486,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -525,7 +525,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -564,7 +564,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
                             const BorderSide(color: AppTheme.primaryGreen, width: 2),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.lightGrey,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 16,
@@ -693,7 +693,7 @@ class _CreateMetaScreenState extends ConsumerState<CreateMetaScreen> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                color: AppTheme.surfaceCard,
                               ),
                             ),
                     ),

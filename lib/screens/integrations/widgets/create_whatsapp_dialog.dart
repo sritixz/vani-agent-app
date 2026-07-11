@@ -502,7 +502,7 @@ class _CreateWhatsAppDialogState extends ConsumerState<CreateWhatsAppDialog> {
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.white,
+                                    color: AppTheme.surfaceCard,
                                   ),
                                 ),
                         ),

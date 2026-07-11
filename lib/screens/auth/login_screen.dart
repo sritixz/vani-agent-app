@@ -206,12 +206,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         )
-                      : const Icon(Icons.g_mobiledata),
+                      : Image.asset(
+                          'assets/images/google_logo.png',
+                          width: 20,
+                          height: 20,
+                        ),
                   label: Text(
                     _isLoadingGoogle ? 'Loading...' : 'Continue with Google',
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: AppTheme.surfaceCard,
                     foregroundColor: AppTheme.darkGrey,
                     side: const BorderSide(color: AppTheme.borderGrey),
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -387,7 +391,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                            color: AppTheme.surfaceCard,
                           ),
                         ),
                 ),

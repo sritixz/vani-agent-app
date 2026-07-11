@@ -48,7 +48,7 @@ class _WhatsAppConversationScreenState
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceCard,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.darkGrey),
@@ -70,7 +70,7 @@ class _WhatsAppConversationScreenState
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          color: AppTheme.surfaceCard,
                         ),
                       ),
                     ),
@@ -161,7 +161,7 @@ class _WhatsAppConversationScreenState
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppTheme.surfaceCard,
                       border: Border(
                         top: BorderSide(color: AppTheme.borderGrey),
                       ),
@@ -505,7 +505,7 @@ class _WhatsAppConversationScreenState
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceCard,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppTheme.borderGrey),
         ),

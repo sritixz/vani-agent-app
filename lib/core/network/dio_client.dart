@@ -327,7 +327,24 @@ class _ErrorInterceptor extends Interceptor {
 
     String message = 'An error occurred';
     if (data is Map<String, dynamic>) {
-      message = data['message'] ?? data['error'] ?? message;
+      if (data['detail'] is List) {
+        final List<dynamic> details = data['detail'];
+        final messages = details.map((d) {
+          if (d is Map<String, dynamic>) {
+            final loc = (d['loc'] as List?)?.join('.') ?? '';
+            final msg = d['msg'] ?? '';
+            return loc.isNotEmpty ? '$loc: $msg' : msg;
+          }
+          return d.toString();
+        }).join(', ');
+        if (messages.isNotEmpty) {
+          message = messages;
+        }
+      } else if (data['detail'] is String) {
+        message = data['detail'];
+      } else {
+        message = data['message'] ?? data['error'] ?? message;
+      }
     }
 
     switch (statusCode) {

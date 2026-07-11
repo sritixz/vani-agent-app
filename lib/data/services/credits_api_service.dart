@@ -29,27 +29,29 @@ class CreditsApiService {
         .toList();
   }
 
-  Future<CreditBalanceModel> purchaseCredits({
-    required double amount,
-    required String paymentMethod,
+  Future<Map<String, dynamic>> initiateCreditPurchase({
+    required String amount,
   }) async {
     final response = await _dioClient.post(
       ApiEndpoints.purchaseCredits,
       data: {
         'amount': amount,
-        'paymentMethod': paymentMethod,
       },
     );
-    return CreditBalanceModel.fromJson(response.data);
+    return response.data;
   }
 
-  Future<Map<String, dynamic>> verifyPayment({
-    required String paymentId,
+  Future<Map<String, dynamic>> verifyRazorpayPayment({
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
   }) async {
     final response = await _dioClient.post(
       ApiEndpoints.verifyPayment,
       data: {
-        'paymentId': paymentId,
+        'razorpay_order_id': razorpayOrderId,
+        'razorpay_payment_id': razorpayPaymentId,
+        'razorpay_signature': razorpaySignature,
       },
     );
     return response.data;

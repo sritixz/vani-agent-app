@@ -91,20 +91,14 @@ class CreditsNotifier extends StateNotifier<CreditsState> {
     }
   }
 
-  Future<void> purchaseCredits({
-    required double amount,
-    required String paymentMethod,
+  Future<Map<String, dynamic>> initiateCreditPurchase({
+    required String amount,
   }) async {
     state = state.copyWith(isPurchasing: true, error: null);
     try {
-      final updatedBalance = await _repository.purchaseCredits(
-        amount: amount,
-        paymentMethod: paymentMethod,
-      );
-      state = state.copyWith(
-        balance: updatedBalance,
-        isPurchasing: false,
-      );
+      final orderData = await _repository.initiateCreditPurchase(amount: amount);
+      state = state.copyWith(isPurchasing: false);
+      return orderData;
     } on AppException catch (e) {
       state = state.copyWith(
         isPurchasing: false,
@@ -114,19 +108,28 @@ class CreditsNotifier extends StateNotifier<CreditsState> {
     } catch (e) {
       state = state.copyWith(
         isPurchasing: false,
-        error: 'Failed to purchase credits',
+        error: 'Failed to initiate credit purchase',
       );
       rethrow;
     }
   }
 
-  Future<void> verifyPayment({required String paymentId}) async {
+  Future<Map<String, dynamic>> verifyRazorpayPayment({
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+  }) async {
     state = state.copyWith(isPurchasing: true, error: null);
     try {
-      await _repository.verifyPayment(paymentId: paymentId);
+      final verificationResult = await _repository.verifyRazorpayPayment(
+        razorpayOrderId: razorpayOrderId,
+        razorpayPaymentId: razorpayPaymentId,
+        razorpaySignature: razorpaySignature,
+      );
       // Reload balance after successful payment
       await loadCreditBalance();
       state = state.copyWith(isPurchasing: false);
+      return verificationResult;
     } on AppException catch (e) {
       state = state.copyWith(
         isPurchasing: false,
