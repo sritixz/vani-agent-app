@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import 'package:vani_app/core/network/api_endpoints.dart';
@@ -42,6 +43,10 @@ class AgentsApiService {
     final response = await _dioClient.post(
       ApiEndpoints.agents,
       data: agentData,
+      options: Options(
+        receiveTimeout: const Duration(seconds: 120),
+        sendTimeout: const Duration(seconds: 120),
+      ),
     );
     _logger.d('Create response: ${response.data}');
     return Agent.fromJson(response.data as Map<String, dynamic>);
@@ -62,6 +67,10 @@ class AgentsApiService {
       final response = await _dioClient.patch(
         ApiEndpoints.agent(agentId),
         data: agentData,
+        options: Options(
+          receiveTimeout: const Duration(seconds: 120),
+          sendTimeout: const Duration(seconds: 120),
+        ),
       );
 
       _logger.d('Response Status Code: ${response.statusCode}');
@@ -89,6 +98,10 @@ class AgentsApiService {
     final response = await _dioClient.post(
       ApiEndpoints.generateAnalysisConfig,
       data: {'agent_prompt': agentPrompt},
+      options: Options(
+        receiveTimeout: const Duration(seconds: 120),
+        sendTimeout: const Duration(seconds: 120),
+      ),
     );
     return response.data as Map<String, dynamic>;
   }
@@ -97,6 +110,10 @@ class AgentsApiService {
     final response = await _dioClient.post(
       ApiEndpoints.generateAnalysisPrompt,
       data: {'agent_prompt': agentPrompt},
+      options: Options(
+        receiveTimeout: const Duration(seconds: 120),
+        sendTimeout: const Duration(seconds: 120),
+      ),
     );
     return response.data['analysis_prompt'] as String;
   }
@@ -119,6 +136,10 @@ class AgentsApiService {
         'language': language,
         'knowledge_base_ids': knowledgeBaseIds,
       },
+      options: Options(
+        receiveTimeout: const Duration(seconds: 120),
+        sendTimeout: const Duration(seconds: 120),
+      ),
     );
     return response.data as Map<String, dynamic>;
   }
@@ -132,6 +153,10 @@ class AgentsApiService {
     final response = await _dioClient.put(
       ApiEndpoints.promptGeneratorSettings,
       data: {'system_prompt': systemPrompt},
+      options: Options(
+        receiveTimeout: const Duration(seconds: 120),
+        sendTimeout: const Duration(seconds: 120),
+      ),
     );
     return response.data['system_prompt'] as String? ?? '';
   }

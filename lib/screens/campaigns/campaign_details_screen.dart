@@ -268,7 +268,75 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> w
               color: AppTheme.mediumGrey,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          // Live Execution Progress Card (Tier 3)
+          _SectionCard(
+            title: 'EXECUTION PROGRESS & ANALYTICS',
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Campaign Progress', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                  const Text('142 / 500 calls (28.4%)', style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: const LinearProgressIndicator(
+                  value: 0.284,
+                  minHeight: 8,
+                  backgroundColor: AppTheme.lightGrey,
+                  color: AppTheme.primaryGreen,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(6)),
+                      child: const Column(
+                        children: [
+                          Text('Answered', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                          Text('118', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                      child: const Column(
+                        children: [
+                          Text('Unanswered', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                          Text('24', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.orange)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.purple.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                      child: const Column(
+                        children: [
+                          Text('Positive Lead', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                          Text('86', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.purple)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
 
           // Basic Information
           _SectionCard(

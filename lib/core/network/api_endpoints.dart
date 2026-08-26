@@ -26,7 +26,7 @@ class ApiEndpoints {
   // Contacts Endpoints
   static const String contacts = '/api/calls/contacts';
   static String updateContactStatus(String phoneNumber) =>
-      '/api/calls/contacts/$phoneNumber/status';
+      '/api/calls/contacts/${Uri.encodeComponent(phoneNumber)}/status';
 
   // Phone Numbers Endpoints
   static const String availablePhoneNumbers = '/api/phone-numbers/available';
@@ -80,6 +80,9 @@ class ApiEndpoints {
   // Campaigns Endpoints
   static const String campaigns = '/api/campaigns';
   static String campaign(String campaignId) => '/api/campaigns/$campaignId';
+  static String campaignPause(String campaignId) => '/api/campaigns/$campaignId/pause';
+  static String campaignResume(String campaignId) => '/api/campaigns/$campaignId/resume';
+  static String campaignSync(String campaignId) => '/api/campaigns/$campaignId/sync';
   static String campaignGsheetHeaders(String campaignId) =>
       '/api/campaigns/$campaignId/gsheet-headers';
   static String campaignNumbers(String campaignId) =>

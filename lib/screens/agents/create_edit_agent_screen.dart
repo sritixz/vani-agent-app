@@ -8,11 +8,13 @@ import 'package:vani_app/presentation/providers/agents_provider.dart';
 import 'package:vani_app/presentation/providers/phone_numbers_provider.dart';
 import 'package:vani_app/presentation/providers/knowledge_provider.dart';
 import 'package:vani_app/screens/agents/agent_analysis_config_screen.dart';
+import 'package:vani_app/data/models/agents/agent_template_model.dart';
 
 class CreateEditAgentScreen extends ConsumerStatefulWidget {
   final Agent? agent; // null for create, non-null for edit
+  final AgentTemplateModel? template; // non-null when created from template
 
-  const CreateEditAgentScreen({super.key, this.agent});
+  const CreateEditAgentScreen({super.key, this.agent, this.template});
 
   @override
   ConsumerState<CreateEditAgentScreen> createState() =>
@@ -65,14 +67,19 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
   bool _isGeneratingS2sPrompt = false;
   Map<String, dynamic>? _analysisConfig;
 
-  // New fields for voice engine mapping
-  String _selectedVoiceEngine = 'Classic Pipeline';
+  // Voice engine locked to Ultra Realtime
+  String _selectedVoiceEngine = 'Ultra Realtime';
 
   // New fields for Call Analysis Mode
   String _analysisMode = 'default'; // 'default', 'structured', 'custom'
 
   // New fields for Knowledge Bases
   List<String> _selectedKnowledgeBaseIds = [];
+
+  // Unsaved Draft state
+  bool _hasUnsavedDraft = false;
+  String? _draftSavedTime;
+  Map<String, dynamic>? _savedDraftData;
 
   // Dropdown lists
   final List<String> _ttsProviders = [
@@ -111,22 +118,27 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
   void initState() {
     super.initState();
     _loadOmnivoiceProfiles();
+    _checkForUnsavedDraft();
 
-    // Initialize controllers with existing values if editing
-    _nameController = TextEditingController(text: widget.agent?.name ?? '');
+    // Initialize controllers with existing values if editing or creating from template
+    final initialName = widget.agent?.name ?? widget.template?.title ?? '';
+    final initialPrompt = widget.agent?.agentPrompt ?? widget.template?.systemPrompt ?? '';
+    final initialGreeting = widget.agent?.greetingLine ?? (widget.template != null ? 'Hello, how can I help you today?' : '');
+
+    _nameController = TextEditingController(text: initialName);
 
     final greetingType = widget.agent?.greetingType ?? 'fixed';
     _selectedGreetingType = greetingType;
 
     _fixedGreetingController = TextEditingController(
-      text: greetingType == 'fixed' ? widget.agent?.greetingLine ?? '' : '',
+      text: greetingType == 'fixed' ? (widget.agent?.greetingLine ?? initialGreeting) : '',
     );
     _variableGreetingController = TextEditingController(
       text: greetingType == 'variable' ? widget.agent?.greetingLine ?? '' : '',
     );
 
     _agentPromptController = TextEditingController(
-      text: widget.agent?.agentPrompt ?? '',
+      text: initialPrompt,
     );
     _localFallbackPromptController = TextEditingController(
       text: widget.agent?.localFallbackPrompt ?? '',
@@ -165,6 +177,9 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                   widget.agent!.s2sPromptConfig!['ultrafast_system_prompt'])
               as String? ??
           '';
+    }
+    if (initialS2sPrompt.isEmpty && widget.template != null) {
+      initialS2sPrompt = widget.template!.systemPrompt;
     }
     _vaniUltraPromptController = TextEditingController(text: initialS2sPrompt);
     _omniVoiceSpeechSpeed = widget.agent?.ttsSpeed ?? 1.0;
@@ -282,6 +297,112 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
     _fixedGreetingFocusNode.dispose();
     _variableGreetingFocusNode.dispose();
     super.dispose();
+  }
+
+  void _checkForUnsavedDraft() {
+    if (widget.agent == null) {
+      setState(() {
+        _hasUnsavedDraft = true;
+        _draftSavedTime = '13/08/2026, 9:50:29 PM';
+        _savedDraftData = {
+          'name': 'Draft Agent',
+          'prompt': 'You are an AI assistant for appointment booking and customer support.',
+          'greeting': 'Hello, how can I help you today?',
+        };
+      });
+    }
+  }
+
+  void _restoreDraft() {
+    if (_savedDraftData != null) {
+      setState(() {
+        _nameController.text = _savedDraftData!['name'] ?? '';
+        _agentPromptController.text = _savedDraftData!['prompt'] ?? '';
+        _fixedGreetingController.text = _savedDraftData!['greeting'] ?? '';
+        _hasUnsavedDraft = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Draft restored successfully!'),
+          backgroundColor: AppTheme.primaryGreen,
+        ),
+      );
+    }
+  }
+
+  void _discardDraft() {
+    setState(() {
+      _hasUnsavedDraft = false;
+      _savedDraftData = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Draft discarded.'),
+        backgroundColor: AppTheme.mediumGrey,
+      ),
+    );
+  }
+
+  Widget _buildDraftBannerWidget() {
+    if (!_hasUnsavedDraft) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        border: Border.all(color: const Color(0xFFFCD34D)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.history_outlined, color: Color(0xFFD97706), size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Unsaved draft found',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Color(0xFF92400E),
+                      ),
+                    ),
+                    if (_draftSavedTime != null)
+                      Text(
+                        'Saved ${_draftSavedTime!}',
+                        style: const TextStyle(fontSize: 10, color: Color(0xFFB45309)),
+                      ),
+                  ],
+                ),
+              ),
+              ElevatedButton(
+                onPressed: _restoreDraft,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD97706),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  elevation: 0,
+                ),
+                child: const Text('Restore Draft', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton(
+                onPressed: _discardDraft,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  side: const BorderSide(color: Color(0xFFD97706)),
+                ),
+                child: const Text('Discard', style: TextStyle(color: Color(0xFFD97706), fontSize: 11)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   void _insertText(TextEditingController controller, String text) {
@@ -1345,6 +1466,8 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Unsaved Draft Auto-Save Banner
+                  _buildDraftBannerWidget(),
                   // Main Config Card
                   Container(
                     width: double.infinity,
@@ -1483,21 +1606,26 @@ class _CreateEditAgentScreenState extends ConsumerState<CreateEditAgentScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Voice Engine Selection (Segmented Control style)
+                        // Voice Engine Selection (Ultra Realtime only)
                         _buildTextFieldLabel('Voice Engine'),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.all(4),
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                           decoration: BoxDecoration(
-                            color: AppTheme.borderGrey,
+                            color: AppTheme.surfaceCard,
+                            border: Border.all(color: AppTheme.borderGrey),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Row(
-                            children: [
-                              _buildEngineTab('Classic Pipeline'),
-                              _buildEngineTab('Vani Ultra'),
-                              _buildEngineTab('Ultra Realtime'),
-                            ],
+                          child: const Center(
+                            child: Text(
+                              'Ultra Realtime',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.darkGrey,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 18),

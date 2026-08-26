@@ -54,7 +54,10 @@ class _UpdateCampaignScreenState extends ConsumerState<UpdateCampaignScreen> {
       final service = ref.read(campaignsApiServiceProvider);
       await service.updateCampaign(
         widget.campaign.id,
-        {'agent_id': _selectedAgentId},
+        {
+          'agentId': _selectedAgentId,
+          'agent_id': _selectedAgentId,
+        },
       );
 
       if (mounted) {

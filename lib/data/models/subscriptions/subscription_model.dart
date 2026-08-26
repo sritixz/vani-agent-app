@@ -42,6 +42,11 @@ class CurrentSubscriptionModel {
   final DateTime? currentPeriodEnd;
   final int? remainingMinutes;
   final bool? autoRenew;
+  final int? concurrency;
+  final String? webTests;
+  final double? minutesUsed;
+  final int? callsThisPeriod;
+  final String? resetDate;
 
   CurrentSubscriptionModel({
     this.id,
@@ -52,6 +57,11 @@ class CurrentSubscriptionModel {
     this.currentPeriodEnd,
     this.remainingMinutes,
     this.autoRenew,
+    this.concurrency,
+    this.webTests,
+    this.minutesUsed,
+    this.callsThisPeriod,
+    this.resetDate,
   });
 
   factory CurrentSubscriptionModel.fromJson(Map<String, dynamic> json) =>

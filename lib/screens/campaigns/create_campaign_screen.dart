@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:vani_app/config/theme.dart';
 import 'package:vani_app/data/services/campaigns_api_service.dart';
 import 'package:vani_app/models/campaign_model.dart';
+import 'package:vani_app/presentation/providers/agents_provider.dart';
 
 class CreateCampaignScreen extends ConsumerStatefulWidget {
   final Campaign? campaign; // For editing existing campaign
@@ -31,6 +32,30 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
   
   PlatformFile? _selectedFile;
   bool _isLoading = false;
+
+  // Tier 1 Switches
+  bool _multiNumberRotation = false;
+  bool _autoFollowupCall = false;
+  bool _sendWhatsappMessage = false;
+
+  // Tier 2 Contact Source Tabs & Campaign Types
+  String _selectedContactTab = 'Upload File'; // 'Upload File', 'Google Sheet', 'Contact Stream', 'Contact Lists'
+  final _gsheetUrlController = TextEditingController();
+  final _contactStreamUrlController = TextEditingController();
+  String? _selectedContactListId;
+
+  String _selectedCampaignType = 'standard'; // 'standard', 'quick_qualify'
+  String _selectedTimezone = 'Asia/Kolkata';
+
+  final List<String> _timezones = [
+    'Asia/Kolkata',
+    'UTC',
+    'America/New_York',
+    'America/Los_Angeles',
+    'Europe/London',
+    'Asia/Dubai',
+    'Singapore',
+  ];
 
   @override
   void initState() {
@@ -74,6 +99,8 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
     _startDateTimeController.dispose();
     _endDateTimeController.dispose();
     _timeZoneController.dispose();
+    _gsheetUrlController.dispose();
+    _contactStreamUrlController.dispose();
     super.dispose();
   }
 
@@ -142,11 +169,28 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
       return;
     }
 
-    if (widget.campaign == null && _selectedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a contact file')),
-      );
-      return;
+    if (widget.campaign == null) {
+      if (_selectedContactTab == 'Upload File' && _selectedFile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a contact file')),
+        );
+        return;
+      } else if (_selectedContactTab == 'Google Sheet' && _gsheetUrlController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a Google Sheet URL')),
+        );
+        return;
+      } else if (_selectedContactTab == 'Contact Stream' && _contactStreamUrlController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a Contact Stream Webhook URL')),
+        );
+        return;
+      } else if (_selectedContactTab == 'Contact Lists' && _selectedContactListId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a contact list')),
+        );
+        return;
+      }
     }
 
     setState(() {
@@ -155,11 +199,32 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
 
     try {
       final service = ref.read(campaignsApiServiceProvider);
+      final contactSourceMap = {
+        'Upload File': 'csv',
+        'Google Sheet': 'gsheet',
+        'Contact Stream': 'stream',
+        'Contact Lists': 'list',
+      };
+
       final campaignData = <String, dynamic>{
         'name': _nameController.text,
+        'agentId': _agentIdController.text,
         'agent_id': _agentIdController.text,
         'retries': _retriesController.text,
+        'contact_source': contactSourceMap[_selectedContactTab] ?? 'csv',
+        'campaign_type': _selectedCampaignType,
+        'multi_number_rotation': _multiNumberRotation,
+        'auto_followup_call': _autoFollowupCall,
+        'send_whatsapp_message': _sendWhatsappMessage,
       };
+
+      if (_selectedContactTab == 'Google Sheet') {
+        campaignData['gsheet_url'] = _gsheetUrlController.text.trim();
+      } else if (_selectedContactTab == 'Contact Stream') {
+        campaignData['webhook_url'] = _contactStreamUrlController.text.trim();
+      } else if (_selectedContactTab == 'Contact Lists') {
+        campaignData['contact_list_id'] = _selectedContactListId;
+      }
 
       if (_customFirstLineController.text.isNotEmpty) {
         campaignData['custom_first_line'] = _customFirstLineController.text;
@@ -174,7 +239,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
         campaignData['time_zone'] = _timeZoneController.text;
       }
 
-      if (_selectedFile != null) {
+      if (_selectedFile != null && _selectedContactTab == 'Upload File') {
         campaignData['contact_file'] = await MultipartFile.fromFile(
           _selectedFile!.path!,
           filename: _selectedFile!.name,
@@ -217,9 +282,11 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final agentsState = ref.watch(agentsProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.campaign == null ? 'Create Campaign' : 'Edit Campaign'),
+        title: Text(widget.campaign == null ? 'Start a Campaign' : 'Edit Campaign'),
         backgroundColor: AppTheme.surfaceCard,
         foregroundColor: AppTheme.darkGrey,
         elevation: 0,
@@ -230,57 +297,295 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Campaign Name
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Campaign Name *',
-                  border: OutlineInputBorder(),
+              // Campaign Essentials Section Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter campaign name';
-                  }
-                  return null;
-                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Campaign Essentials', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                    const SizedBox(height: 12),
+                    // Campaign Designation Input
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'CAMPAIGN DESIGNATION *',
+                        hintText: 'Enter Campaign Name',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter campaign name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Assigned Voice Expert Dropdown Selector
+                    DropdownButtonFormField<String>(
+                      value: _agentIdController.text.isNotEmpty ? _agentIdController.text : null,
+                      decoration: const InputDecoration(
+                        labelText: 'ASSIGNED VOICE EXPERT *',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      hint: const Text('Select Voice Expert', style: TextStyle(fontSize: 13)),
+                      items: agentsState.agents.map((ag) {
+                        return DropdownMenuItem<String>(
+                          value: ag.id,
+                          child: Text('${ag.name} (${ag.voice})', style: const TextStyle(fontSize: 13)),
+                        );
+                      }).toList(),
+                      onChanged: widget.campaign != null
+                          ? null
+                          : (val) {
+                              if (val != null) {
+                                final selected = agentsState.agents.firstWhere((a) => a.id == val);
+                                setState(() {
+                                  _agentIdController.text = val;
+                                  _agentNameController.text = selected.name;
+                                });
+                              }
+                            },
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
 
-              // Agent Name (Read-only for edit mode)
-              TextFormField(
-                controller: _agentNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Agent Name *',
-                  border: OutlineInputBorder(),
+              // Multi-Number Rotation Switch (Web App Alignment)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.lightGrey,
+                  border: Border.all(color: AppTheme.borderGrey),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                readOnly: widget.campaign != null,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter agent name';
-                  }
-                  return null;
-                },
+                child: Row(
+                  children: [
+                    const Icon(Icons.sync_alt, color: AppTheme.mediumGrey, size: 20),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Multi-Number Rotation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey)),
+                          Text('Distribute call load across multiple outbound numbers', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _multiNumberRotation,
+                      activeColor: AppTheme.primaryGreen,
+                      onChanged: (val) => setState(() => _multiNumberRotation = val),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
 
-              // Agent ID (Hidden field, only used for API)
-              TextFormField(
-                controller: _agentIdController,
-                decoration: const InputDecoration(
-                  labelText: 'Agent ID *',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter agent ID';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Contact File
+              // 4-Tab Contact Source Selector Card
               if (widget.campaign == null)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceCard,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.borderGrey),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Contacts Source', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                      const SizedBox(height: 12),
+
+                      // Source Tab Selection Bar
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: ['Upload File', 'Google Sheet', 'Contact Stream', 'Contact Lists'].map((tab) {
+                            final isSelected = tab == _selectedContactTab;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChoiceChip(
+                                label: Text(tab, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : AppTheme.darkGrey)),
+                                selected: isSelected,
+                                selectedColor: AppTheme.primaryGreen,
+                                backgroundColor: AppTheme.lightGrey,
+                                onSelected: (val) {
+                                  if (val) setState(() => _selectedContactTab = tab);
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Tab Content Rendering
+                      if (_selectedContactTab == 'Upload File') ...[
+                        InkWell(
+                          onTap: _pickFile,
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppTheme.lightGrey,
+                              border: Border.all(color: AppTheme.borderGrey, style: BorderStyle.solid),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.upload_file, color: AppTheme.primaryGreen, size: 36),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _selectedFile?.name ?? 'Upload Contact Spreadsheet',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text('Excel (.xlsx, .xls, .csv) files only', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Downloading sample campaign manifest template...'), backgroundColor: AppTheme.primaryGreen),
+                            );
+                          },
+                          icon: const Icon(Icons.download, size: 14, color: AppTheme.primaryGreen),
+                          label: const Text('Download campaign manifest template by clicking here', style: TextStyle(fontSize: 11, color: AppTheme.primaryGreen)),
+                        ),
+                      ] else if (_selectedContactTab == 'Google Sheet') ...[
+                        TextFormField(
+                          controller: _gsheetUrlController,
+                          decoration: const InputDecoration(
+                            labelText: 'Google Sheet Spreadsheet URL *',
+                            hintText: 'https://docs.google.com/spreadsheets/d/...',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.table_chart, color: AppTheme.primaryGreen),
+                          ),
+                        ),
+                      ] else if (_selectedContactTab == 'Contact Stream') ...[
+                        TextFormField(
+                          controller: _contactStreamUrlController,
+                          decoration: const InputDecoration(
+                            labelText: 'Realtime Contact Stream Webhook URL',
+                            hintText: 'https://api.vaniagent.com/webhooks/contacts',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.stream, color: Colors.blue),
+                          ),
+                        ),
+                      ] else if (_selectedContactTab == 'Contact Lists') ...[
+                        DropdownButtonFormField<String>(
+                          value: _selectedContactListId,
+                          decoration: const InputDecoration(
+                            labelText: 'Select Saved Contact List *',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.contacts, color: Colors.purple),
+                          ),
+                          hint: const Text('Choose list from CRM'),
+                          items: const [
+                            DropdownMenuItem(value: 'list_1', child: Text('Q3 Real Estate Leads (500 contacts)')),
+                            DropdownMenuItem(value: 'list_2', child: Text('Healthcare Followup List (250 contacts)')),
+                          ],
+                          onChanged: (val) => setState(() => _selectedContactListId = val),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              if (widget.campaign == null) const SizedBox(height: 16),
+
+              // Campaign Type Cards Section (Standard vs Quick Qualify)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Campaign Type', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        // Standard Card
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _selectedCampaignType = 'standard'),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _selectedCampaignType == 'standard' ? AppTheme.lightGreen : AppTheme.lightGrey,
+                                border: Border.all(color: _selectedCampaignType == 'standard' ? AppTheme.primaryGreen : AppTheme.borderGrey, width: 1.5),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.phone_forwarded, size: 16, color: _selectedCampaignType == 'standard' ? AppTheme.primaryGreen : AppTheme.mediumGrey),
+                                      const SizedBox(width: 4),
+                                      const Text('Standard', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text('Fixed retries, scheduled start/end times', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Quick Qualify Card
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _selectedCampaignType = 'quick_qualify'),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _selectedCampaignType == 'quick_qualify' ? Colors.purple.withOpacity(0.1) : AppTheme.lightGrey,
+                                border: Border.all(color: _selectedCampaignType == 'quick_qualify' ? Colors.purple : AppTheme.borderGrey, width: 1.5),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.bolt, size: 16, color: _selectedCampaignType == 'quick_qualify' ? Colors.purple : AppTheme.mediumGrey),
+                                      const SizedBox(width: 4),
+                                      const Text('Quick Qualify', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text('Sentiment-driven smart auto-stop qualification', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Contact File (only rendered when Upload File tab is active)
+              if (widget.campaign == null && _selectedContactTab == 'Upload File')
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -355,43 +660,150 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
               const SizedBox(height: 16),
 
               // Start Date Time
-              GestureDetector(
-                onTap: () => _selectDateTime(_startDateTimeController, true),
-                child: TextFormField(
-                  controller: _startDateTimeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Start Date & Time (Optional)',
-                    border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.calendar_today),
-                    hintText: 'YYYY-MM-DD HH:MM',
+              // Start Date Time
+              TextFormField(
+                controller: _startDateTimeController,
+                decoration: InputDecoration(
+                  labelText: 'Start Date & Time (Optional)',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.calendar_today),
+                    onPressed: () => _selectDateTime(_startDateTimeController, true),
                   ),
-                  readOnly: true,
+                  hintText: 'YYYY-MM-DD HH:MM',
                 ),
               ),
               const SizedBox(height: 16),
 
               // End Date Time
-              GestureDetector(
-                onTap: () => _selectDateTime(_endDateTimeController, false),
-                child: TextFormField(
-                  controller: _endDateTimeController,
-                  decoration: const InputDecoration(
-                    labelText: 'End Date & Time (Optional)',
-                    border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.calendar_today),
-                    hintText: 'YYYY-MM-DD HH:MM',
+              TextFormField(
+                controller: _endDateTimeController,
+                decoration: InputDecoration(
+                  labelText: 'End Date & Time (Optional)',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.calendar_today),
+                    onPressed: () => _selectDateTime(_endDateTimeController, false),
                   ),
-                  readOnly: true,
+                  hintText: 'YYYY-MM-DD HH:MM',
                 ),
               ),
               const SizedBox(height: 16),
 
-              // Time Zone
-              TextFormField(
-                controller: _timeZoneController,
+              // Time Zone Dropdown Selector
+              DropdownButtonFormField<String>(
+                value: _selectedTimezone,
                 decoration: const InputDecoration(
-                  labelText: 'Time Zone (Optional)',
+                  labelText: 'REGION / TIMEZONE',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.public, color: AppTheme.mediumGrey),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                items: _timezones.map((tz) {
+                  return DropdownMenuItem<String>(
+                    value: tz,
+                    child: Text(tz, style: const TextStyle(fontSize: 13)),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      _selectedTimezone = val;
+                      _timeZoneController.text = val;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // AI Automation Section Card (Web App Alignment)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.lightGrey,
+                  border: Border.all(color: AppTheme.borderGrey),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.smart_toy_outlined, size: 18, color: AppTheme.darkGrey),
+                        SizedBox(width: 8),
+                        Text(
+                          'AI Automation',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
+                        ),
+                        Spacer(),
+                        Text('OPTIONAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.mediumGrey)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('Configure post-call automations triggered after each contact interaction.', style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey)),
+                    const SizedBox(height: 12),
+
+                    // Auto Follow-up Call Switch
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceCard,
+                        border: Border.all(color: AppTheme.borderGrey),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.call_made, size: 16, color: AppTheme.mediumGrey),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Auto Follow-up Call', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                                Text('Trigger a follow-up call after unanswered contacts', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _autoFollowupCall,
+                            activeColor: AppTheme.primaryGreen,
+                            onChanged: (val) => setState(() => _autoFollowupCall = val),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Send WhatsApp Message Switch
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceCard,
+                        border: Border.all(color: AppTheme.borderGrey),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.chat, size: 16, color: AppTheme.primaryGreen),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Send WhatsApp Message', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                                Text('Send a personalised WhatsApp message via Business API', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _sendWhatsappMessage,
+                            activeColor: AppTheme.primaryGreen,
+                            onChanged: (val) => setState(() => _sendWhatsappMessage = val),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),

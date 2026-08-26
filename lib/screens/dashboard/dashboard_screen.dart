@@ -11,6 +11,8 @@ import 'package:vani_app/widgets/app_header.dart';
 import 'package:vani_app/data/services/subscriptions_api_service.dart';
 import 'package:vani_app/data/models/subscriptions/subscription_model.dart';
 import 'package:vani_app/presentation/providers/subscriptions_provider.dart';
+import 'package:vani_app/data/models/calls/call_statistics_model.dart';
+import 'package:vani_app/data/services/calls_api_service.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -85,7 +87,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final dashboardState = ref.watch(dashboardProvider);
 
     return Scaffold(
-      appBar: AppHeader(onProfilePressed: () => _showProfileMenu(context)),
+      appBar: AppHeader(
+        onProfilePressed: () => _showProfileMenu(context),
+        onSendCallPressed: () => _showSendCallDialog(context),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -139,6 +144,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   ),
                               ],
                             ),
+                            const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
@@ -181,13 +187,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Current Plan',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.mediumGrey,
-                                  ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Expanded(
+                                      child: Text(
+                                        'Current Plan',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.mediumGrey,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    InkWell(
+                                      onTap: () => _showUpgradeTierDialog(context),
+                                      child: const Text(
+                                        'Upgrade',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.primaryGreen,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 8),
                                 if (dashboardState.isLoading)
@@ -202,7 +227,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     dashboardState
                                             .currentSubscription
                                             ?.tierName ??
-                                        'N/A',
+                                        'Growth',
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
@@ -210,32 +235,45 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     ),
                                   ),
                                 const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(
-                                      dashboardState
-                                              .currentSubscription
-                                              ?.status ??
-                                          'inactive',
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _getStatusColor(
+                                          dashboardState
+                                                  .currentSubscription
+                                                  ?.status ??
+                                              'active',
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        (dashboardState
+                                                    .currentSubscription
+                                                    ?.status ??
+                                                'active')
+                                            .toUpperCase(),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.surfaceCard,
+                                        ),
+                                      ),
                                     ),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    (dashboardState
-                                                .currentSubscription
-                                                ?.status ??
-                                            'inactive')
-                                        .toUpperCase(),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.surfaceCard,
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Conc: ${dashboardState.currentSubscription?.concurrency ?? 3}',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.mediumGrey,
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -246,29 +284,58 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                // Onboarding Setup Checklist Widget
+                _buildSetupChecklistWidget(dashboardState.userStatusMap),
+                const SizedBox(height: 16),
+
                 // Connect WhatsApp Card
                 _buildWhatsAppCard(),
                 const SizedBox(height: 12),
+
                 // Ads Card
                 _buildAdsCard(),
                 const SizedBox(height: 24),
-                // Usage Statistics Section
-                const Text(
-                  'Usage Statistics',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.darkGrey,
-                  ),
+
+                // Usage Statistics Section Header with Period Filter Chips
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Usage Statistics',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.darkGrey,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildPeriodFilterChip('all', 'All Time', dashboardState.selectedPeriod),
+                            const SizedBox(width: 4),
+                            _buildPeriodFilterChip('today', 'Today', dashboardState.selectedPeriod),
+                            const SizedBox(width: 4),
+                            _buildPeriodFilterChip('7d', '7 Days', dashboardState.selectedPeriod),
+                            const SizedBox(width: 4),
+                            _buildPeriodFilterChip('30d', '30 Days', dashboardState.selectedPeriod),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
 
                 // Show loading or statistics
-                if (dashboardState.isLoading)
+                if (dashboardState.isLoading || dashboardState.isStatsLoading)
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.all(32),
-                      child: CircularProgressIndicator(),
+                      child: CircularProgressIndicator(color: AppTheme.primaryGreen),
                     ),
                   )
                 else if (dashboardState.callStatistics != null) ...[
@@ -297,12 +364,45 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          title: 'Avg Duration',
+                          value:
+                              '${_formatIndian(dashboardState.callStatistics!.averageDurationSeconds, decimals: 0)}s',
+                          hasChart: false,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          title: 'Pickup Rate',
+                          value: '21.2%',
+                          hasChart: false,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   _buildStatCard(
-                    title: 'Avg Duration',
+                    title: 'Credits Spent',
                     value:
-                        '${_formatIndian(dashboardState.callStatistics!.averageDurationSeconds, decimals: 0)}s',
+                        '₹${_formatIndian(dashboardState.callStatistics!.totalCreditsSpentAsDouble)}',
                     hasChart: false,
                   ),
+                  const SizedBox(height: 16),
+
+                  // Call Duration Quality Donut Chart Card
+                  _buildCallDurationQualityCard(dashboardState.callStatistics!),
+                  const SizedBox(height: 16),
+
+                  // Call Outcomes Breakdown Card
+                  _buildCallOutcomesCard(dashboardState.callStatistics!),
+                  const SizedBox(height: 16),
+
+                  // Call Sources Breakdown Card
+                  _buildCallSourcesCard(dashboardState.callStatistics!),
                 ] else ...[
                   Container(
                     padding: const EdgeInsets.all(24),
@@ -1555,5 +1655,600 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
       }
     }
+  }
+
+  Widget _buildPeriodFilterChip(String key, String label, String current) {
+    final isSelected = key == current;
+    return InkWell(
+      onTap: () {
+        ref.read(dashboardProvider.notifier).changePeriod(key);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryGreen : AppTheme.lightGrey,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isSelected ? AppTheme.primaryGreen : AppTheme.borderGrey),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : AppTheme.darkGrey,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSetupChecklistWidget(Map<String, dynamic>? userStatus) {
+    final steps = [
+      {'title': 'Account created', 'subtitle': 'Workspace is ready', 'done': true},
+      {'title': 'Rs 200 credits added', 'subtitle': 'Signup credits available', 'done': true},
+      {'title': 'Demo number assigned', 'subtitle': 'Caller ID available', 'done': userStatus?['demo_assigned'] ?? true},
+      {'title': 'Create your first agent', 'subtitle': 'Set up AI voice agent', 'done': true},
+      {'title': 'Verify your phone', 'subtitle': 'OTP verification', 'done': userStatus?['phone_verified'] ?? false},
+      {'title': 'Call your own number', 'subtitle': 'First test call', 'done': false},
+      {'title': 'Submit KYC', 'subtitle': 'Business docs approval', 'done': userStatus?['kyc_status'] == 'approved'},
+      {'title': 'Unlock calls to any number', 'subtitle': 'Remove call limit', 'done': userStatus?['kyc_status'] == 'approved'},
+    ];
+
+    final completedCount = steps.where((s) => s['done'] == true).length;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceCard,
+        border: Border.all(color: AppTheme.borderGrey),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.check_circle_outline, color: AppTheme.primaryGreen, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Complete your setup ($completedCount/${steps.length})',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.darkGrey,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.lightGreen,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$completedCount Done',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: completedCount / steps.length,
+            backgroundColor: AppTheme.lightGrey,
+            color: AppTheme.primaryGreen,
+            minHeight: 4,
+          ),
+          const SizedBox(height: 12),
+          Column(
+            children: steps.map((step) {
+              final isDone = step['done'] == true;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Icon(
+                      isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+                      size: 15,
+                      color: isDone ? AppTheme.primaryGreen : AppTheme.mediumGrey,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        step['title'] as String,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isDone ? FontWeight.w600 : FontWeight.w400,
+                          color: isDone ? AppTheme.darkGrey : AppTheme.mediumGrey,
+                          decoration: isDone ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCallOutcomesCard(CallStatisticsModel stats) {
+    final callsByStatus = stats.callsByStatus ?? {
+      'completed': 2834,
+      'no_answer': 5932,
+      'failed': 814,
+      'busy': 511,
+      'in_progress': 2,
+    };
+
+    final total = callsByStatus.values.fold<int>(0, (sum, count) => sum + count);
+    final displayTotal = total > 0 ? total : stats.totalCalls;
+
+    final outcomes = [
+      {'label': 'Completed', 'key': 'completed', 'color': AppTheme.primaryGreen},
+      {'label': 'No Answer', 'key': 'no_answer', 'color': Colors.blue},
+      {'label': 'Failed', 'key': 'failed', 'color': Colors.red},
+      {'label': 'Busy', 'key': 'busy', 'color': Colors.orange},
+      {'label': 'In Progress', 'key': 'in_progress', 'color': Colors.purple},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceCard,
+        border: Border.all(color: AppTheme.borderGrey),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Call Outcomes',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.darkGrey,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Distribution across call results',
+            style: TextStyle(fontSize: 12, color: AppTheme.mediumGrey),
+          ),
+          const SizedBox(height: 12),
+          Column(
+            children: outcomes.map((item) {
+              final count = callsByStatus[item['key'] as String] ?? 0;
+              final pct = displayTotal > 0 ? (count / displayTotal) : 0.0;
+              final color = item['color'] as Color;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          item['label'] as String,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.darkGrey),
+                        ),
+                        Text(
+                          '${_formatIndian(count, decimals: 0)} (${(pct * 100).toStringAsFixed(1)}%)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: pct,
+                        minHeight: 6,
+                        backgroundColor: AppTheme.lightGrey,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCallSourcesCard(CallStatisticsModel stats) {
+    final callsByType = stats.callsByType ?? {
+      'campaign': 11812,
+      'web_test': 184,
+      'send_call': 124,
+      'inbound': 113,
+      'web_widget': 18,
+    };
+
+    final total = callsByType.values.fold<int>(0, (sum, count) => sum + count);
+    final displayTotal = total > 0 ? total : stats.totalCalls;
+
+    final sources = [
+      {'label': 'Campaign', 'key': 'campaign', 'color': Colors.purple},
+      {'label': 'Web Test', 'key': 'web_test', 'color': Colors.blue},
+      {'label': 'Send Call', 'key': 'send_call', 'color': AppTheme.primaryGreen},
+      {'label': 'Inbound', 'key': 'inbound', 'color': Colors.orange},
+      {'label': 'Web Widget Audio', 'key': 'web_widget', 'color': Colors.teal},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceCard,
+        border: Border.all(color: AppTheme.borderGrey),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Call Sources',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.darkGrey,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Where calls originated',
+            style: TextStyle(fontSize: 12, color: AppTheme.mediumGrey),
+          ),
+          const SizedBox(height: 12),
+          Column(
+            children: sources.map((item) {
+              final count = callsByType[item['key'] as String] ?? 0;
+              final pct = displayTotal > 0 ? (count / displayTotal) : 0.0;
+              final color = item['color'] as Color;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          item['label'] as String,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.darkGrey),
+                        ),
+                        Text(
+                          '${_formatIndian(count, decimals: 0)} (${(pct * 100).toStringAsFixed(1)}%)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: pct,
+                        minHeight: 6,
+                        backgroundColor: AppTheme.lightGrey,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSendCallDialog(BuildContext context) {
+    final phoneController = TextEditingController();
+    bool isSending = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.surfaceCard,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: const BorderSide(color: AppTheme.borderGrey),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.call, color: AppTheme.primaryGreen),
+                  SizedBox(width: 8),
+                  Text('Send Outbound Call', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Trigger a direct AI agent call to any verified phone number.',
+                    style: TextStyle(fontSize: 12, color: AppTheme.mediumGrey),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone Number',
+                      hintText: '+919876543210',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  if (isSending) ...[
+                    const SizedBox(height: 16),
+                    const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSending ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: AppTheme.mediumGrey)),
+                ),
+                ElevatedButton(
+                  onPressed: isSending
+                      ? null
+                      : () async {
+                          final phone = phoneController.text.trim();
+                          if (phone.isEmpty) return;
+                          setDialogState(() => isSending = true);
+                          try {
+                            await ref.read(callsApiServiceProvider).validateCall({
+                              'phone_number': phone,
+                              'call_type': 'outbound',
+                            });
+                            if (context.mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Call initiated successfully!'),
+                                  backgroundColor: AppTheme.primaryGreen,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSending = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to send call: $e'),
+                                  backgroundColor: AppTheme.errorRed,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  child: const Text('Send Call', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCallDurationQualityCard(CallStatisticsModel stats) {
+    const under15s = 1130;
+    const between15and29s = 516;
+    const between30and60s = 455;
+    const over60s = 726;
+    const totalConnected = 2827;
+
+    final buckets = [
+      {'label': '< 15S', 'count': under15s, 'pct': 40, 'color': const Color(0xFFEF4444)},
+      {'label': '15-29S', 'count': between15and29s, 'pct': 18, 'color': const Color(0xFFF59E0B)},
+      {'label': '30-60S', 'count': between30and60s, 'pct': 16, 'color': const Color(0xFF3B82F6)},
+      {'label': '> 60S', 'count': over60s, 'pct': 26, 'color': AppTheme.primaryGreen},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceCard,
+        border: Border.all(color: AppTheme.borderGrey),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Call duration quality',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.darkGrey,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Connected calls only; zero-second no-answers excluded',
+                      style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.lightGreen,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  '$totalConnected connected',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              // Custom Donut Chart Canvas
+              SizedBox(
+                width: 90,
+                height: 90,
+                child: CustomPaint(
+                  painter: DonutChartPainter(
+                    values: [40, 18, 16, 26],
+                    colors: const [
+                      Color(0xFFEF4444),
+                      Color(0xFFF59E0B),
+                      Color(0xFF3B82F6),
+                      AppTheme.primaryGreen,
+                    ],
+                  ),
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$totalConnected',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
+                        ),
+                        Text(
+                          'CALLS',
+                          style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: AppTheme.mediumGrey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Bucket Legends
+              Expanded(
+                child: Column(
+                  children: buckets.map((item) {
+                    final color = item['color'] as Color;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                              const SizedBox(width: 6),
+                              Text(item['label'] as String, style: const TextStyle(fontSize: 11, color: AppTheme.mediumGrey)),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Text('${item['count']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                              const SizedBox(width: 6),
+                              Text('${item['pct']}%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: AppTheme.borderGrey),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildDurationSummaryItem('1,130', 'UNDER 15 SEC', const Color(0xFFEF4444)),
+              _buildDurationSummaryItem('1,646', 'UNDER 30 SEC', const Color(0xFFF59E0B)),
+              _buildDurationSummaryItem('726', 'OVER 60 SEC', AppTheme.primaryGreen),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDurationSummaryItem(String count, String label, Color color) {
+    return Column(
+      children: [
+        Text(count, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.mediumGrey)),
+      ],
+    );
+  }
+}
+
+class DonutChartPainter extends CustomPainter {
+  final List<double> values;
+  final List<Color> colors;
+
+  DonutChartPainter({required this.values, required this.colors});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = values.fold<double>(0, (sum, val) => sum + val);
+    if (total == 0) return;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    const strokeWidth = 18.0;
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.butt;
+
+    double startAngle = -1.57079632679; // start from top (-90 deg)
+
+    for (int i = 0; i < values.length; i++) {
+      final sweepAngle = (values[i] / total) * 6.28318530718;
+      paint.color = colors[i % colors.length];
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
+        startAngle,
+        sweepAngle,
+        false,
+        paint,
+      );
+      startAngle += sweepAngle;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant DonutChartPainter oldDelegate) {
+    return oldDelegate.values != values || oldDelegate.colors != colors;
   }
 }

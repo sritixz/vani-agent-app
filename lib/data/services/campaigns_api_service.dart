@@ -71,6 +71,20 @@ class CampaignsApiService {
     await _dioClient.delete(ApiEndpoints.campaign(campaignId));
   }
 
+  Future<Campaign> pauseCampaign(String campaignId) async {
+    final response = await _dioClient.post(ApiEndpoints.campaignPause(campaignId));
+    return Campaign.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<Campaign> resumeCampaign(String campaignId) async {
+    final response = await _dioClient.post(ApiEndpoints.campaignResume(campaignId));
+    return Campaign.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> syncCampaign(String campaignId) async {
+    await _dioClient.post(ApiEndpoints.campaignSync(campaignId));
+  }
+
   Future<List<String>> getGsheetHeaders(String campaignId) async {
     final response = await _dioClient.get(ApiEndpoints.campaignGsheetHeaders(campaignId));
     // API returns {"header_name": {}, ...} — keys are the column header names

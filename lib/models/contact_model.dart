@@ -38,6 +38,40 @@ class Contact {
     this.lastCallAt,
   });
 
+  Contact copyWith({
+    String? phoneNumber,
+    String? contactName,
+    String? email,
+    String? city,
+    String? location,
+    String? source,
+    String? leadStatus,
+    String? customInstruction,
+    List<String>? tags,
+    int? notesCount,
+    int? totalCalls,
+    int? completedCalls,
+    int? failedCalls,
+    String? lastCallAt,
+  }) {
+    return Contact(
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      contactName: contactName ?? this.contactName,
+      email: email ?? this.email,
+      city: city ?? this.city,
+      location: location ?? this.location,
+      source: source ?? this.source,
+      leadStatus: leadStatus ?? this.leadStatus,
+      customInstruction: customInstruction ?? this.customInstruction,
+      tags: tags ?? this.tags,
+      notesCount: notesCount ?? this.notesCount,
+      totalCalls: totalCalls ?? this.totalCalls,
+      completedCalls: completedCalls ?? this.completedCalls,
+      failedCalls: failedCalls ?? this.failedCalls,
+      lastCallAt: lastCallAt ?? this.lastCallAt,
+    );
+  }
+
   factory Contact.fromJson(Map<String, dynamic> json) {
     return Contact(
       phoneNumber: json['phone_number'] as String,

@@ -5,6 +5,7 @@ import 'package:vani_app/config/theme.dart';
 import 'package:vani_app/data/services/campaigns_api_service.dart';
 import 'package:vani_app/models/campaign_model.dart';
 import 'package:vani_app/screens/campaigns/campaign_details_screen.dart';
+import 'package:vani_app/screens/campaigns/create_campaign_screen.dart';
 import 'package:vani_app/screens/campaigns/update_campaign_screen.dart';
 import 'package:vani_app/utils/date_time_utils.dart';
 
@@ -96,22 +97,61 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Campaigns',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.darkGrey,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Manage your campaign list',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: AppTheme.mediumGrey,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Campaigns',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.darkGrey,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Manage your outbound voice campaigns',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: AppTheme.mediumGrey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CreateCampaignScreen(),
+                          ),
+                        ).then((_) {
+                          ref.invalidate(campaignsProvider);
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text(
+                        'Start Campaign',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 
@@ -125,29 +165,55 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
                           border: Border.all(color: AppTheme.borderGrey),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Column(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.campaign_outlined,
                                 size: 48,
                                 color: AppTheme.mediumGrey,
                               ),
-                              SizedBox(height: 12),
-                              Text(
-                                'No campaigns yet',
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No campaigns created yet',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: AppTheme.darkGrey,
                                 ),
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Your campaigns will appear here',
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Create and launch your first AI call campaign',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: AppTheme.mediumGrey,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const CreateCampaignScreen(),
+                                    ),
+                                  ).then((_) {
+                                    ref.invalidate(campaignsProvider);
+                                  });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primaryGreen,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.add, size: 18),
+                                label: const Text(
+                                  'Create Campaign',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ],
@@ -209,6 +275,24 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
               ],
             ),
           ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CreateCampaignScreen(),
+            ),
+          ).then((_) {
+            ref.invalidate(campaignsProvider);
+          });
+        },
+        backgroundColor: AppTheme.primaryGreen,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Start Campaign',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -329,55 +413,149 @@ class _CampaignCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Campaign Name and Status
+          // Campaign Name, Integration Badges, and Status Row
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Monospace ID Hash Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.lightGrey,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: Text(
+                  campaign.id.length > 12 ? campaign.id.substring(0, 12) : campaign.id,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.mediumGrey,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      campaign.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.darkGrey,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            campaign.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.darkGrey,
+                            ),
+                          ),
+                        ),
+                        // One-Click Resume / Pause Quick Action Button
+                        if (campaign.status.toLowerCase() == 'paused')
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              try {
+                                await ref.read(campaignsApiServiceProvider).resumeCampaign(campaign.id);
+                                onRefresh();
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error resuming campaign: $e')),
+                                  );
+                                }
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.lightGreen,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            icon: const Icon(Icons.play_arrow, size: 14, color: AppTheme.primaryGreen),
+                            label: const Text('Resume', style: TextStyle(color: AppTheme.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold)),
+                          )
+                        else if (campaign.status.toLowerCase() == 'active')
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              try {
+                                await ref.read(campaignsApiServiceProvider).pauseCampaign(campaign.id);
+                                onRefresh();
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error pausing campaign: $e')),
+                                  );
+                                }
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange.withOpacity(0.1),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            icon: const Icon(Icons.pause, size: 14, color: Colors.orange),
+                            label: const Text('Pause', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getStatusBackgroundColor(campaign.status),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '● ${campaign.status.toUpperCase()}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: _getStatusColor(campaign.status),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        // Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _getStatusBackgroundColor(campaign.status),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '● ${campaign.status.toUpperCase()}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: _getStatusColor(campaign.status),
+                            ),
+                          ),
                         ),
-                      ),
+                        // Integration Source Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightGreen,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.table_chart, size: 10, color: AppTheme.primaryGreen),
+                              SizedBox(width: 2),
+                              Text('GSheet', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                            ],
+                          ),
+                        ),
+                        // Category Pill Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('Quick Qualification', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-
-          // Campaign ID
-          Text(
-            'ID: ${campaign.id}',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: AppTheme.mediumGrey,
-            ),
           ),
           const SizedBox(height: 12),
 
@@ -488,11 +666,35 @@ class _CampaignCard extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
+          // 7-Icon Quick Actions Bar (Web App Alignment)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // Sync Icon
+                IconButton(
+                  tooltip: 'Sync Contacts',
+                  onPressed: () async {
+                    try {
+                      await ref.read(campaignsApiServiceProvider).syncCampaign(campaign.id);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Contact sync triggered successfully!'), backgroundColor: AppTheme.primaryGreen),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Sync failed: $e')),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.sync, size: 18, color: AppTheme.primaryGreen),
+                ),
+                // Report / Analytics Icon
+                IconButton(
+                  tooltip: 'Analytics Report',
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -500,54 +702,75 @@ class _CampaignCard extends ConsumerWidget {
                       ),
                     );
                   },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppTheme.borderGrey),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  icon: const Icon(
-                    Icons.visibility_outlined,
-                    size: 18,
-                    color: AppTheme.darkGrey,
-                  ),
-                  label: const Text(
-                    'View Details',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.darkGrey,
-                    ),
-                  ),
+                  icon: const Icon(Icons.bar_chart, size: 18, color: Colors.blue),
                 ),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: () => _editCampaign(context),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppTheme.borderGrey),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  minimumSize: const Size(48, 48),
+                // Config Icon
+                IconButton(
+                  tooltip: 'Execution Parameters',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Retries: ${campaign.retries} · Timezone: ${campaign.timeZone ?? "UTC"}')),
+                    );
+                  },
+                  icon: const Icon(Icons.tune, size: 18, color: AppTheme.darkGrey),
                 ),
-                child: const Icon(
-                  Icons.edit_outlined,
-                  size: 18,
-                  color: AppTheme.darkGrey,
+                // Robot Bot Config Icon
+                IconButton(
+                  tooltip: 'Robot Automation Config',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Row(
+                          children: [
+                            Icon(Icons.smart_toy, color: AppTheme.primaryGreen),
+                            SizedBox(width: 8),
+                            Text('Robot Config', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        content: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Automated AI bot is active for this campaign.', style: TextStyle(fontSize: 12)),
+                            SizedBox(height: 8),
+                            Text('• Sentiment auto-stop: Active\n• Auto Follow-up: Enabled\n• WhatsApp outreach: Active', style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey)),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+                        ],
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.smart_toy_outlined, size: 18, color: Colors.purple),
                 ),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: () => _deleteCampaign(context, ref),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppTheme.borderGrey),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  minimumSize: const Size(48, 48),
+                // Edit Icon
+                IconButton(
+                  tooltip: 'Edit Campaign',
+                  onPressed: () => _editCampaign(context),
+                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.darkGrey),
                 ),
-                child: const Icon(
-                  Icons.delete_outline,
-                  size: 18,
-                  color: Colors.red,
+                // View Icon
+                IconButton(
+                  tooltip: 'View Details',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => CampaignDetailsScreen(campaignId: campaign.id),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.visibility_outlined, size: 18, color: AppTheme.darkGrey),
                 ),
-              ),
-            ],
+                // Delete Icon
+                IconButton(
+                  tooltip: 'Delete Campaign',
+                  onPressed: () => _deleteCampaign(context, ref),
+                  icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -1,4 +1,4 @@
-package com.example.vani_app
+package app.vaniagent.com
 
 import io.flutter.embedding.android.FlutterActivity
 

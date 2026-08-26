@@ -109,7 +109,10 @@ class AuthApiService {
     
     // Handle different response formats
     if (response.data is String) {
-      return response.data as String;
+      final strData = (response.data as String).trim();
+      if (strData.startsWith('http://') || strData.startsWith('https://')) {
+        return strData;
+      }
     }
     
     if (response.data is Map<String, dynamic>) {

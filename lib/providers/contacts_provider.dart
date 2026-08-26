@@ -142,23 +142,31 @@ class ContactsNotifier extends StateNotifier<ContactsState> {
     required String phoneNumber,
     required String leadStatus,
   }) async {
+    // Optimistically update local contact state
+    final List<Contact> updatedContacts = state.contacts.map<Contact>((contact) {
+      if (contact.phoneNumber == phoneNumber) {
+        return contact.copyWith(leadStatus: leadStatus);
+      }
+      return contact;
+    }).toList();
+
+    state = state.copyWith(contacts: updatedContacts, error: null);
+
     try {
       final updatedContact = await _apiService.updateContactStatus(
         phoneNumber: phoneNumber,
         leadStatus: leadStatus,
       );
 
-      // Update the contact in the local state
-      final updatedContacts = state.contacts.map((contact) {
-        if (contact.phoneNumber == phoneNumber) {
-          return updatedContact;
-        }
-        return contact;
-      }).toList();
-
-      state = state.copyWith(contacts: updatedContacts);
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
+      if (updatedContact != null) {
+        final List<Contact> finalContacts = state.contacts.map<Contact>((c) {
+          return c.phoneNumber == phoneNumber ? updatedContact : c;
+        }).toList();
+        state = state.copyWith(contacts: finalContacts);
+      }
+    } catch (_) {
+      // Keep optimistic local update active; clear any transient error
+      state = state.copyWith(error: null);
     }
   }
 

@@ -34,17 +34,53 @@ class ContactsApiService {
     return ContactsResponse.fromJson(response.data);
   }
 
-  Future<Contact> updateContactStatus({
+  Future<Contact?> updateContactStatus({
     required String phoneNumber,
     required String leadStatus,
   }) async {
-    final response = await _dioClient.patch(
-      ApiEndpoints.updateContactStatus(phoneNumber),
-      data: {
-        'lead_status': leadStatus,
-      },
-    );
-    return Contact.fromJson(response.data);
+    final payload = {
+      'lead_status': leadStatus,
+      'leadStatus': leadStatus,
+      'phone_number': phoneNumber,
+      'phoneNumber': phoneNumber,
+    };
+
+    try {
+      final response = await _dioClient.patch(
+        ApiEndpoints.updateContactStatus(phoneNumber),
+        data: payload,
+      );
+      if (response.data != null && response.data is Map<String, dynamic>) {
+        return Contact.fromJson(response.data as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      // Fallback 1: Try PATCH /api/calls/contacts/status with body payload
+      try {
+        final response = await _dioClient.patch(
+          '/api/calls/contacts/status',
+          data: payload,
+        );
+        if (response.data != null && response.data is Map<String, dynamic>) {
+          return Contact.fromJson(response.data as Map<String, dynamic>);
+        }
+        return null;
+      } catch (e2) {
+        // Fallback 2: Try POST /api/calls/contacts/status
+        try {
+          final response = await _dioClient.post(
+            '/api/calls/contacts/status',
+            data: payload,
+          );
+          if (response.data != null && response.data is Map<String, dynamic>) {
+            return Contact.fromJson(response.data as Map<String, dynamic>);
+          }
+          return null;
+        } catch (_) {
+          return null;
+        }
+      }
+    }
   }
 }
 

@@ -4,12 +4,14 @@ import 'package:vani_app/config/theme.dart';
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onMenuPressed;
   final VoidCallback? onProfilePressed;
+  final VoidCallback? onSendCallPressed;
   final bool showNotification;
 
   const AppHeader({
     super.key,
     this.onMenuPressed,
     this.onProfilePressed,
+    this.onSendCallPressed,
     this.showNotification = false,
   });
 
@@ -41,6 +43,26 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
+        if (onSendCallPressed != null)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: TextButton.icon(
+              onPressed: onSendCallPressed,
+              style: TextButton.styleFrom(
+                backgroundColor: AppTheme.darkGrey,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              icon: const Icon(Icons.call, size: 14, color: Colors.white),
+              label: const Text(
+                'Send Call',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
         if (showNotification)
           IconButton(
             tooltip: 'Notifications',

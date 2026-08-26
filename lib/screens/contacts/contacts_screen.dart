@@ -569,7 +569,10 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                 const SizedBox(height: 4),
                 GestureDetector(
                   onTap: () => _showStatusUpdateDialog(contact),
-                  child: Row(
+                  child: Wrap(
+                    spacing: 4,
+                    runSpacing: 2,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Container(
                         width: 8,
@@ -579,7 +582,6 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 4),
                       Text(
                         statusLabel,
                         style: TextStyle(
@@ -588,14 +590,12 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                           color: statusColor,
                         ),
                       ),
-                      const SizedBox(width: 4),
                       Icon(
                         Icons.edit,
                         size: 12,
                         color: statusColor.withOpacity(0.7),
                       ),
                       if (contact.totalCalls > 0) ...[
-                        const SizedBox(width: 8),
                         const Text(
                           '•',
                           style: TextStyle(
@@ -603,7 +603,6 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                             color: AppTheme.mediumGrey,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Text(
                           '${contact.totalCalls} call${contact.totalCalls != 1 ? 's' : ''}',
                           style: const TextStyle(

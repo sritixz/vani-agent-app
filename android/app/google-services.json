@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:123456789:android:abcdef1234567890",
         "android_client_info": {
-          "package_name": "com.example.vani_app"
+          "package_name": "app.vaniagent.com"
         }
       },
       "oauth_client": [

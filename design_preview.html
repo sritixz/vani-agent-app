@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaniAgent Mobile App - Pixel-Perfect UI Design Showcase</title>
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      /* Brand Color Tokens matching AppTheme (theme.dart) */
+      --primary-green: #0F766E;
+      --primary-green-hover: #0d655e;
+      --light-green: #F0FDF4;
+      --dark-grey: #0F172A;
+      --medium-grey: #475569;
+      --light-grey: #F8FAFC;
+      --border-grey: #CBD5E1;
+      --success-green: #10B981;
+      --warning-orange: #F59E0B;
+      --error-red: #EF4444;
+      --inactive-grey: #94A3B8;
+      --purple: #6D28D9;
+      --surface-card: #FFFFFF;
+
+      --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --radius-sharp: 4px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-main);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: #090d16;
+      color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Top Studio Bar */
+    .studio-bar {
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .studio-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: white;
+      font-weight: 800;
+      font-size: 17px;
+      text-decoration: none;
+    }
+
+    .studio-logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--primary-green);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+    }
+
+    .mode-pills {
+      display: flex;
+      background: #1e293b;
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+
+    .mode-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .mode-btn.active {
+      background: var(--primary-green);
+      color: white;
+    }
+
+    .studio-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-action {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-action:hover {
+      background: #334155;
+      color: white;
+    }
+
+    /* Main Showcase Layout */
+    .studio-viewport {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 300px 1fr 280px;
+      height: calc(100vh - 53px);
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .studio-viewport.hide-sidebars {
+      grid-template-columns: 0px 1fr 0px;
+    }
+
+    .studio-viewport.hide-sidebars .sidebar-left,
+    .studio-viewport.hide-sidebars .sidebar-right {
+      display: none;
+    }
+
+    /* Left Drawer Sidebar */
+    .sidebar-left {
+      background: #0f172a;
+      border-right: 1px solid #1e293b;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #64748b;
+      margin-bottom: 6px;
+      padding-left: 4px;
+    }
+
+    .nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-btn {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: 1px solid transparent;
+      padding: 9px 12px;
+      border-radius: 6px;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.15s ease;
+    }
+
+    .nav-btn div {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-btn i {
+      font-size: 14px;
+      width: 18px;
+      text-align: center;
+      color: #64748b;
+    }
+
+    .nav-btn:hover {
+      background: #1e293b;
+      color: white;
+    }
+
+    .nav-btn.active {
+      background: rgba(15, 118, 110, 0.25);
+      border-color: rgba(15, 118, 110, 0.5);
+      color: #2dd4bf;
+    }
+
+    .nav-btn.active i {
+      color: #2dd4bf;
+    }
+
+    .badge-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #1e293b;
+      color: #94a3b8;
+    }
+
+    /* Central Stage */
+    .stage-center {
+      background: #060911;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    /* Mobile Phone Emulator Mockup */
+    .phone-device {
+      width: 380px;
+      height: 100%;
+      max-height: 800px;
+      background: #0f172a;
+      border-radius: 44px;
+      border: 10px solid #1e293b;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 0 1px #334155;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Full Device View Mode (100% Height Responsive) */
+    .phone-device.mode-full-screen {
+      width: 100%;
+      max-width: 420px;
+      height: 100%;
+      max-height: 100%;
+      border-radius: 0;
+      border: none;
+      box-shadow: none;
+    }
+
+    .phone-device.mode-desktop-responsive {
+      width: 100%;
+      max-width: 1000px;
+      height: 100%;
+      max-height: 100%;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+
+    /* Dynamic Island Notch */
+    .dynamic-island {
+      width: 120px;
+      height: 22px;
+      background: #000;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 18px;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 8px;
+    }
+
+    .camera-dot {
+      width: 8px;
+      height: 8px;
+      background: #1a1a1a;
+      border-radius: 50%;
+    }
+
+    /* Mobile Screen Display Container */
+    .mobile-screen {
+      flex: 1;
+      background: var(--light-grey);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      color: var(--dark-grey);
+    }
+
+    /* System Top Status Bar */
+    .sys-status-bar {
+      padding: 34px 18px 6px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--dark-grey);
+      background: var(--surface-card);
+    }
+
+    /* Flutter App Header Widget (AppHeader) */
+    .flutter-app-header {
+      background: var(--surface-card);
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border-grey);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+
+    .app-logo-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .app-logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--primary-green);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+    }
+
+    .app-title-text {
+      color: var(--dark-grey);
+      font-size: 19px;
+      font-weight: 800;
+    }
+
+    .header-actions-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-send-call {
+      background: var(--dark-grey);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .user-avatar-circle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--light-grey);
+      border: 1px solid var(--border-grey);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--dark-grey);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    /* Screen Content Viewport */
+    .screen-view {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .screen-view.active {
+      display: flex;
+    }
+
+    /* Flutter App Bottom Navigation Bar Widget (AppBottomNavigation) */
+    .flutter-bottom-nav {
+      background: var(--surface-card);
+      border-top: 1px solid var(--border-grey);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      padding: 6px 0 14px 0;
+    }
+
+    .bnav-item {
+      background: transparent;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--inactive-grey);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .bnav-item i {
+      font-size: 20px;
+    }
+
+    .bnav-item.active {
+      color: var(--primary-green);
+      font-weight: 800;
+    }
+
+    /* Pixel-Perfect UI Components matching Flutter Code */
+
+    /* Cards */
+    .card-box {
+      background: var(--surface-card);
+      border: 1px solid var(--border-grey);
+      border-radius: 6px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card-row-split {
+      display: flex;
+      gap: 12px;
+    }
+
+    .card-split-item {
+      flex: 1;
+      background: var(--surface-card);
+      border: 1px solid var(--border-grey);
+      border-radius: 6px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .text-title-bold {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--dark-grey);
+    }
+
+    .text-subtitle-muted {
+      font-size: 13px;
+      color: var(--medium-grey);
+      font-weight: 500;
+    }
+
+    .btn-green-fill {
+      background: var(--primary-green);
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .btn-outlined {
+      background: transparent;
+      color: var(--dark-grey);
+      border: 1px solid var(--border-grey);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-status-pill {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-active {
+      background: var(--light-green);
+      color: var(--primary-green);
+    }
+
+    .badge-paused {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning-orange);
+    }
+
+    .badge-purple {
+      background: rgba(109, 40, 217, 0.15);
+      color: var(--purple);
+    }
+
+    /* Agent Card Layout (matching _buildAgentCard in agents_screen.dart) */
+    .agent-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border-grey);
+      border-radius: 6px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .agent-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .agent-name-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--dark-grey);
+    }
+
+    .agent-id-code {
+      font-size: 9px;
+      color: var(--medium-grey);
+      font-family: var(--font-mono);
+    }
+
+    .switch-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--primary-green);
+    }
+
+    .switch-pill {
+      width: 32px;
+      height: 18px;
+      background: var(--primary-green);
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .switch-pill::after {
+      content: '';
+      width: 14px;
+      height: 14px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      right: 2px;
+    }
+
+    .agent-details-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-grey);
+    }
+
+    .detail-col-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--medium-grey);
+      letter-spacing: 0.5px;
+    }
+
+    .detail-col-val {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--dark-grey);
+      margin-top: 2px;
+    }
+
+    .action-scroll-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-top: 10px;
+    }
+
+    .btn-chip-action {
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .btn-test { background: rgba(15, 118, 110, 0.1); color: var(--primary-green); border-color: rgba(15, 118, 110, 0.3); }
+    .btn-simulate { background: rgba(109, 40, 217, 0.1); color: var(--purple); border-color: rgba(109, 40, 217, 0.3); }
+    .btn-flow { background: rgba(245, 158, 11, 0.1); color: #b45309; border-color: rgba(245, 158, 11, 0.3); }
+    .btn-edit { background: rgba(37, 99, 235, 0.1); color: #2563eb; border-color: rgba(37, 99, 235, 0.3); }
+    .btn-delete { background: rgba(239, 68, 68, 0.1); color: var(--error-red); border-color: rgba(239, 68, 68, 0.3); }
+
+    /* Campaign Card Layout (matching _CampaignCard in campaigns_screen.dart) */
+    .campaign-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border-grey);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .campaign-id-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--medium-grey);
+      background: var(--light-grey);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border-grey);
+    }
+
+    .action-icons-row {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-grey);
+    }
+
+    .btn-icon-square {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--dark-grey);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .btn-icon-square:hover {
+      background: var(--light-grey);
+    }
+
+    /* Floating Action Button */
+    .fab-btn {
+      position: absolute;
+      bottom: 70px;
+      right: 16px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--primary-green);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 12px rgba(15, 118, 110, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    /* Right Spec Sidebar */
+    .sidebar-right {
+      background: #0f172a;
+      border-left: 1px solid #1e293b;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+
+    .code-box {
+      background: #060911;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #2dd4bf;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Studio Bar -->
+  <header class="studio-bar">
+    <a href="#" class="studio-logo">
+      <div class="studio-logo-icon"><i class="fa-solid fa-microphone"></i></div>
+      <span>VaniAgent Mobile Studio</span>
+    </a>
+
+    <!-- Viewport Mode Switcher -->
+    <div class="mode-pills">
+      <button class="mode-btn active" id="btnModeMobile" onclick="setDeviceMode('mobile')">
+        <i class="fa-solid fa-mobile-screen-button"></i> Mobile Frame
+      </button>
+      <button class="mode-btn" id="btnModeFull" onclick="setDeviceMode('full')">
+        <i class="fa-solid fa-expand"></i> Full App Screen (100% Height)
+      </button>
+      <button class="mode-btn" id="btnModeDesktop" onclick="setDeviceMode('desktop')">
+        <i class="fa-solid fa-desktop"></i> Expanded Responsive View
+      </button>
+    </div>
+
+    <div class="studio-actions">
+      <button class="btn-action" onclick="toggleSidebars()">
+        <i class="fa-solid fa-sliders"></i> Toggle Sidebars
+      </button>
+      <button class="btn-action" onclick="toggleAppTheme()">
+        <i class="fa-solid fa-moon"></i> Light / Dark Theme
+      </button>
+    </div>
+  </header>
+
+  <!-- Studio Viewport Layout -->
+  <div class="studio-viewport" id="studioViewport">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar-left">
+      <div>
+        <div class="section-label">Flutter Screens</div>
+        <div class="nav-list">
+          <button class="nav-btn active" onclick="switchAppScreen('dashboard')">
+            <div><i class="fa-solid fa-chart-pie"></i> 1. Dashboard</div>
+            <span class="badge-tag">Main</span>
+          </button>
+          <button class="nav-btn" onclick="switchAppScreen('agents')">
+            <div><i class="fa-solid fa-robot"></i> 2. Voice Agents</div>
+            <span class="badge-tag">List</span>
+          </button>
+          <button class="nav-btn" onclick="switchAppScreen('campaigns')">
+            <div><i class="fa-solid fa-bullhorn"></i> 3. Campaigns</div>
+            <span class="badge-tag">Workflows</span>
+          </button>
+          <button class="nav-btn" onclick="switchAppScreen('contacts')">
+            <div><i class="fa-solid fa-address-book"></i> 4. Contacts CRM</div>
+            <span class="badge-tag">Leads</span>
+          </button>
+          <button class="nav-btn" onclick="switchAppScreen('history')">
+            <div><i class="fa-solid fa-clock-rotate-left"></i> 5. Call History</div>
+            <span class="badge-tag">Logs</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Sub-Screens & Forms</div>
+        <div class="nav-list">
+          <button class="nav-btn" onclick="switchAppScreen('create-agent')">
+            <div><i class="fa-solid fa-plus-circle"></i> Create Agent</div>
+            <span class="badge-tag">Form</span>
+          </button>
+          <button class="nav-btn" onclick="switchAppScreen('simulator')">
+            <div><i class="fa-solid fa-phone-volume"></i> Voice Simulator</div>
+            <span class="badge-tag">WebRTC</span>
+          </button>
+          <button class="nav-btn" onclick="switchAppScreen('whatsapp')">
+            <div><i class="fa-brands fa-whatsapp"></i> WhatsApp Inbox</div>
+            <span class="badge-tag">Chat</span>
+          </button>
+          <button class="nav-btn" onclick="switchAppScreen('login')">
+            <div><i class="fa-solid fa-right-to-bracket"></i> Login Screen</div>
+            <span class="badge-tag">Auth</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center Stage -->
+    <main class="stage-center">
+      
+      <div class="phone-device" id="phoneDevice">
+        <!-- Dynamic Island Notch -->
+        <div class="dynamic-island">
+          <div class="camera-dot"></div>
+        </div>
+
+        <div class="mobile-screen" id="mobileScreen">
+          
+          <!-- System Status Bar -->
+          <div class="sys-status-bar">
+            <span>9:41</span>
+            <div style="display:flex; gap:6px;">
+              <i class="fa-solid fa-signal"></i>
+              <i class="fa-solid fa-wifi"></i>
+              <i class="fa-solid fa-battery-full"></i>
+            </div>
+          </div>
+
+          <!-- AppHeader Widget (Exact Flutter Representation) -->
+          <div class="flutter-app-header">
+            <div class="app-logo-box">
+              <div class="app-logo-icon"><i class="fa-solid fa-microphone"></i></div>
+              <div class="app-title-text">VaniAgent</div>
+            </div>
+            <div class="header-actions-row">
+              <button class="btn-send-call">
+                <i class="fa-solid fa-phone"></i> Send Call
+              </button>
+              <div class="user-avatar-circle">
+                <i class="fa-regular fa-user"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Screen 1: Dashboard (dashboard_screen.dart) -->
+          <div class="screen-view active" id="view-dashboard">
+            <!-- Row 1: Credit Balance & Current Plan -->
+            <div class="card-row-split">
+              <div class="card-split-item">
+                <div>
+                  <div class="text-subtitle-muted" style="font-weight:700;">Credit Balance</div>
+                  <div class="text-title-bold" style="margin-top:4px;">₹0.00</div>
+                </div>
+                <button class="btn-green-fill" style="margin-top:10px;">Add Funds</button>
+              </div>
+              <div class="card-split-item">
+                <div>
+                  <div style="display:flex; justify-content:space-between;">
+                    <span class="text-subtitle-muted" style="font-weight:700;">Current Plan</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--primary-green); cursor:pointer;">Upgrade</span>
+                  </div>
+                  <div class="text-title-bold" style="font-size:18px; margin-top:4px;">Growth</div>
+                  <div style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+                    <span class="badge-status-pill badge-active">ACTIVE</span>
+                    <span style="font-size:11px; color:var(--medium-grey); font-weight:600;">Conc: 3</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Onboarding Setup Checklist Widget -->
+            <div class="card-box" style="background:#f0fdf4; border-color:#99f6e4;">
+              <div style="font-size:14px; font-weight:800; color:var(--primary-green);">⚡ Onboarding Setup Checklist</div>
+              <div style="display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--dark-grey);">
+                <div><i class="fa-solid fa-circle-check" style="color:var(--primary-green);"></i> Create your first AI Voice Agent</div>
+                <div><i class="fa-solid fa-circle-check" style="color:var(--primary-green);"></i> Configure WhatsApp Integration</div>
+                <div><i class="fa-regular fa-circle" style="color:var(--medium-grey);"></i> Add Funds to start live calls</div>
+              </div>
+            </div>
+
+            <!-- Connect WhatsApp & Ads Cards -->
+            <div class="card-box">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-weight:800; font-size:14px;"><i class="fa-brands fa-whatsapp" style="color:#16a34a; font-size:16px;"></i> Connect WhatsApp</div>
+                <span class="badge-status-pill badge-active">Ready</span>
+              </div>
+              <p style="font-size:12px; color:var(--medium-grey);">Link your WhatsApp Business Cloud API to trigger instant automated chat follow-ups.</p>
+            </div>
+
+            <!-- Usage Statistics Section Header -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+              <span style="font-size:18px; font-weight:700; color:var(--dark-grey);">Usage Statistics</span>
+              <div style="display:flex; gap:4px;">
+                <span style="padding:4px 8px; border-radius:12px; background:var(--primary-green); color:white; font-size:11px; font-weight:700;">All Time</span>
+                <span style="padding:4px 8px; border-radius:12px; background:var(--surface-card); border:1px solid var(--border-grey); font-size:11px; font-weight:600; color:var(--medium-grey);">Today</span>
+              </div>
+            </div>
+
+            <!-- 2x2 Stats Cards Grid -->
+            <div class="card-row-split">
+              <div class="card-split-item">
+                <div class="text-subtitle-muted">Total Calls</div>
+                <div class="text-title-bold">1,420</div>
+              </div>
+              <div class="card-split-item">
+                <div class="text-subtitle-muted">Total Minutes</div>
+                <div class="text-title-bold">3,850</div>
+              </div>
+            </div>
+
+            <div class="card-row-split">
+              <div class="card-split-item">
+                <div class="text-subtitle-muted">Avg Duration</div>
+                <div class="text-title-bold">162s</div>
+              </div>
+              <div class="card-split-item">
+                <div class="text-subtitle-muted">Pickup Rate</div>
+                <div class="text-title-bold">21.2%</div>
+              </div>
+            </div>
+
+            <!-- Credits Spent -->
+            <div class="card-box">
+              <div class="text-subtitle-muted">Credits Spent</div>
+              <div class="text-title-bold" style="color:var(--primary-green);">₹4,250.00</div>
+            </div>
+          </div>
+
+          <!-- Screen 2: Agents (agents_screen.dart) -->
+          <div class="screen-view" id="view-agents">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-size:24px; font-weight:800;">Agents</div>
+                <div style="font-size:13px; color:var(--medium-grey);">Manage active voice agents</div>
+              </div>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <button class="btn-outlined"><i class="fa-solid fa-grip"></i> Browse Templates</button>
+                <span style="padding:4px 8px; border-radius:12px; background:var(--light-green); color:var(--primary-green); font-size:11px; font-weight:700;">3 total</span>
+              </div>
+            </div>
+
+            <!-- Agent Card 1 -->
+            <div class="agent-card">
+              <div class="agent-header-row">
+                <div>
+                  <div class="agent-name-title">Real Estate Qualifier AI</div>
+                  <div class="agent-id-code">ID: agt_9981273918</div>
+                </div>
+                <div class="switch-toggle-row">
+                  <div class="switch-pill"></div>
+                  <span>Active</span>
+                </div>
+              </div>
+
+              <div class="agent-details-grid">
+                <div>
+                  <div class="detail-col-label">PHONE</div>
+                  <div class="detail-col-val">+1 (800) 555-0199</div>
+                </div>
+                <div>
+                  <div class="detail-col-label">VOICE</div>
+                  <div class="detail-col-val">ElevenLabs - Adam</div>
+                </div>
+                <div>
+                  <div class="detail-col-label">TYPE</div>
+                  <div class="detail-col-val">Vani Ultra</div>
+                </div>
+              </div>
+
+              <!-- Action Chips -->
+              <div class="action-scroll-row">
+                <button class="btn-chip-action btn-test"><i class="fa-solid fa-phone"></i> Test</button>
+                <button class="btn-chip-action btn-simulate" onclick="switchAppScreen('simulator')"><i class="fa-solid fa-bolt"></i> Simulate</button>
+                <button class="btn-chip-action btn-flow"><i class="fa-solid fa-diagram-project"></i> Flow</button>
+                <button class="btn-chip-action btn-edit" onclick="switchAppScreen('create-agent')"><i class="fa-solid fa-pen"></i> Edit</button>
+                <button class="btn-chip-action btn-delete"><i class="fa-solid fa-trash"></i> Delete</button>
+              </div>
+            </div>
+
+            <!-- Agent Card 2 -->
+            <div class="agent-card">
+              <div class="agent-header-row">
+                <div>
+                  <div class="agent-name-title">Customer Support Assistant</div>
+                  <div class="agent-id-code">ID: agt_4421098411</div>
+                </div>
+                <div class="switch-toggle-row">
+                  <div class="switch-pill"></div>
+                  <span>Active</span>
+                </div>
+              </div>
+
+              <div class="agent-details-grid">
+                <div>
+                  <div class="detail-col-label">PHONE</div>
+                  <div class="detail-col-val">+91 98765 43210</div>
+                </div>
+                <div>
+                  <div class="detail-col-label">VOICE</div>
+                  <div class="detail-col-val">OpenAI - Alloy</div>
+                </div>
+                <div>
+                  <div class="detail-col-label">TYPE</div>
+                  <div class="detail-col-val">Standard</div>
+                </div>
+              </div>
+
+              <div class="action-scroll-row">
+                <button class="btn-chip-action btn-test"><i class="fa-solid fa-phone"></i> Test</button>
+                <button class="btn-chip-action btn-flow"><i class="fa-solid fa-diagram-project"></i> Flow</button>
+                <button class="btn-chip-action btn-edit"><i class="fa-solid fa-pen"></i> Edit</button>
+                <button class="btn-chip-action btn-delete"><i class="fa-solid fa-trash"></i> Delete</button>
+              </div>
+            </div>
+
+            <!-- Floating Action Button -->
+            <button class="fab-btn" onclick="switchAppScreen('create-agent')"><i class="fa-solid fa-plus"></i></button>
+          </div>
+
+          <!-- Screen 3: Campaigns (campaigns_screen.dart) -->
+          <div class="screen-view" id="view-campaigns">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-size:24px; font-weight:800;">Campaigns</div>
+                <div style="font-size:13px; color:var(--medium-grey);">Manage your outbound voice campaigns</div>
+              </div>
+              <button class="btn-green-fill" style="width:auto; padding:8px 12px;"><i class="fa-solid fa-plus"></i> Start Campaign</button>
+            </div>
+
+            <!-- Campaign Card -->
+            <div class="campaign-card">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                  <span class="campaign-id-tag">c7891234a56b</span>
+                  <div style="font-size:16px; font-weight:800; margin-top:4px;">July Real Estate Blast</div>
+                  <div style="display:flex; gap:6px; margin-top:4px;">
+                    <span class="badge-status-pill badge-active">● ACTIVE</span>
+                    <span style="font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; background:var(--light-green); color:var(--primary-green);">GSheet</span>
+                    <span style="font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; background:rgba(109,40,217,0.1); color:var(--purple);">Quick Qualification</span>
+                  </div>
+                </div>
+                <button style="background:rgba(245,158,11,0.1); color:var(--warning-orange); border:none; padding:4px 8px; border-radius:4px; font-weight:700; font-size:11px;">Pause</button>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:12px;">
+                <div>
+                  <div style="font-size:10px; font-weight:700; color:var(--medium-grey);">START DATE</div>
+                  <div style="font-weight:600;">18/08/2026, 10:00:00</div>
+                </div>
+                <div>
+                  <div style="font-size:10px; font-weight:700; color:var(--medium-grey);">END DATE</div>
+                  <div style="font-weight:600;">25/08/2026, 18:00:00</div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font-size:10px; font-weight:700; color:var(--medium-grey);">AGENT NAME</div>
+                <div style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px; margin-top:2px;">
+                  <i class="fa-solid fa-headset" style="color:var(--medium-grey);"></i> Real Estate Qualifier AI
+                </div>
+              </div>
+
+              <!-- 7 Quick Action Icon Bar -->
+              <div class="action-icons-row">
+                <button class="btn-icon-square" style="color:var(--primary-green);"><i class="fa-solid fa-rotate"></i></button>
+                <button class="btn-icon-square" style="color:#2563eb;"><i class="fa-solid fa-chart-column"></i></button>
+                <button class="btn-icon-square"><i class="fa-solid fa-sliders"></i></button>
+                <button class="btn-icon-square" style="color:var(--purple);"><i class="fa-solid fa-robot"></i></button>
+                <button class="btn-icon-square"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn-icon-square"><i class="fa-solid fa-eye"></i></button>
+                <button class="btn-icon-square" style="color:var(--error-red);"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Screen 4: Contacts (contacts_screen.dart) -->
+          <div class="screen-view" id="view-contacts">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-size:24px; font-weight:800;">Contacts</div>
+                <div style="font-size:13px; color:var(--medium-grey);">Audience contacts and leads</div>
+              </div>
+              <button class="btn-green-fill" style="width:auto; padding:8px 12px;"><i class="fa-solid fa-user-plus"></i> Add Contact</button>
+            </div>
+
+            <div class="card-box">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px; height:36px; border-radius:50%; background:var(--light-green); color:var(--primary-green); display:flex; align-items:center; justify-content:center; font-weight:800;">RM</div>
+                  <div>
+                    <div style="font-weight:700; font-size:14px;">Rahul Mehta</div>
+                    <div style="font-size:11px; color:var(--medium-grey);">+91 98765 43210 • Tag: Qualified VIP</div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right" style="color:var(--medium-grey); font-size:12px;"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Screen 5: Call History (call_history_screen.dart) -->
+          <div class="screen-view" id="view-history">
+            <div>
+              <div style="font-size:24px; font-weight:800;">Call History</div>
+              <div style="font-size:13px; color:var(--medium-grey);">Call logs, duration & AI transcripts</div>
+            </div>
+
+            <div class="card-box">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:800; font-size:14px;">Call #8921</span>
+                <span class="badge-status-pill badge-active">Qualified</span>
+              </div>
+              <div style="font-size:12px; color:var(--medium-grey);">Customer: Rahul Mehta (+91 98765 43210)</div>
+              <div style="font-size:11px; color:var(--medium-grey);">Duration: 2m 45s | Cost: ₹3.20</div>
+
+              <div style="background:var(--light-grey); padding:10px; border-radius:4px; font-size:11px; font-family:var(--font-mono); color:var(--dark-grey);">
+                <strong>[AI]:</strong> Hi Rahul! Calling regarding your property inquiry.<br>
+                <strong>[User]:</strong> Yes, looking for 3BHK flats in Gurgaon under 1.5Cr.<br>
+                <strong>[AI]:</strong> Perfect! Scheduling a site visit with our team.
+              </div>
+            </div>
+          </div>
+
+          <!-- Screen 6: Create Agent Form -->
+          <div class="screen-view" id="view-create-agent">
+            <div style="font-size:20px; font-weight:800;">Create Voice Agent</div>
+            <div class="card-box">
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11px; font-weight:700;">AGENT NAME</label>
+                <input type="text" value="Real Estate Qualifier" style="padding:8px; border:1px solid var(--border-grey); border-radius:4px;">
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11px; font-weight:700;">ENGINE TYPE</label>
+                <select style="padding:8px; border:1px solid var(--border-grey); border-radius:4px;">
+                  <option>Vani Ultra (Ultra Realtime)</option>
+                  <option>Standard Engine</option>
+                </select>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11px; font-weight:700;">SYSTEM PROMPT</label>
+                <textarea rows="3" style="padding:8px; border:1px solid var(--border-grey); border-radius:4px;">You are an AI sales agent for VaniAgent...</textarea>
+              </div>
+
+              <button class="btn-green-fill"><i class="fa-solid fa-floppy-disk"></i> Save Agent</button>
+            </div>
+          </div>
+
+          <!-- Screen 7: Simulator -->
+          <div class="screen-view" id="view-simulator">
+            <div style="background:#0f172a; color:white; padding:24px; border-radius:12px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:16px;">
+              <div style="font-size:12px; color:#2dd4bf; font-weight:800;">LIVE VOICE CALL SIMULATOR</div>
+              <div style="font-size:20px; font-weight:800;">Real Estate Qualifier AI</div>
+              <div style="display:flex; gap:4px; align-items:center; height:30px;">
+                <div style="width:4px; height:16px; background:#2dd4bf;"></div>
+                <div style="width:4px; height:28px; background:#2dd4bf;"></div>
+                <div style="width:4px; height:20px; background:#2dd4bf;"></div>
+              </div>
+              <button style="background:var(--error-red); color:white; border:none; padding:10px 20px; border-radius:20px; font-weight:700; cursor:pointer;">End Test Call</button>
+            </div>
+          </div>
+
+          <!-- Screen 8: WhatsApp Inbox -->
+          <div class="screen-view" id="view-whatsapp">
+            <div style="font-size:24px; font-weight:800;">WhatsApp Inbox</div>
+            <div class="card-box">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px; height:36px; border-radius:50%; background:#d1fae5; color:#065f46; display:flex; align-items:center; justify-content:center; font-size:18px;"><i class="fa-brands fa-whatsapp"></i></div>
+                  <div>
+                    <div style="font-weight:700; font-size:14px;">Vikram Malhotra</div>
+                    <div style="font-size:11px; color:var(--medium-grey);">AI: Sent property catalog link</div>
+                  </div>
+                </div>
+                <span class="badge-status-pill badge-active">2 New</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Screen 9: Login -->
+          <div class="screen-view" id="view-login">
+            <div style="font-size:24px; font-weight:800;">Welcome back</div>
+            <div class="card-box">
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11px; font-weight:700;">EMAIL</label>
+                <input type="email" value="developer@vaniagent.ai" style="padding:8px; border:1px solid var(--border-grey); border-radius:4px;">
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11px; font-weight:700;">PASSWORD</label>
+                <input type="password" value="••••••••••••" style="padding:8px; border:1px solid var(--border-grey); border-radius:4px;">
+              </div>
+              <button class="btn-green-fill" onclick="switchAppScreen('dashboard')">Sign In</button>
+            </div>
+          </div>
+
+          <!-- Flutter App Bottom Navigation Bar Widget (AppBottomNavigation) -->
+          <nav class="flutter-bottom-nav">
+            <button class="bnav-item active" id="tab-dashboard" onclick="switchAppScreen('dashboard')">
+              <i class="fa-solid fa-chart-pie"></i>
+              <span>Dashboard</span>
+            </button>
+            <button class="bnav-item" id="tab-agents" onclick="switchAppScreen('agents')">
+              <i class="fa-solid fa-robot"></i>
+              <span>Agents</span>
+            </button>
+            <button class="bnav-item" id="tab-campaigns" onclick="switchAppScreen('campaigns')">
+              <i class="fa-solid fa-bullhorn"></i>
+              <span>Campaigns</span>
+            </button>
+            <button class="bnav-item" id="tab-contacts" onclick="switchAppScreen('contacts')">
+              <i class="fa-solid fa-address-book"></i>
+              <span>Contacts</span>
+            </button>
+            <button class="bnav-item" id="tab-history" onclick="switchAppScreen('history')">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              <span>History</span>
+            </button>
+          </nav>
+
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Right Inspector Sidebar -->
+    <aside class="sidebar-right">
+      <div class="section-label">Flutter Spec Specs</div>
+      <div style="font-size:12px; color:#cbd5e1;">
+        Replicating exact Dart code from <code>vani-agent-app</code>:
+      </div>
+
+      <div class="code-box">// Flutter Theme Tokens
+AppTheme.primaryGreen = #0F766E
+AppTheme.surfaceCard  = #FFFFFF
+AppTheme.darkGrey     = #0F172A
+AppTheme.borderGrey   = #CBD5E1</div>
+
+      <div class="section-label">Active Screen Target</div>
+      <div style="background:#060911; padding:10px; border-radius:6px; font-size:11px; border:1px solid #1e293b;">
+        <div>Screen: <span id="lblActiveScreen" style="color:#2dd4bf;">dashboard</span></div>
+        <div style="margin-top:4px;">Dart File: <span id="lblDartFile" style="color:#94a3b8;">lib/screens/dashboard/dashboard_screen.dart</span></div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script>
+    const screenMeta = {
+      'dashboard': { file: 'lib/screens/dashboard/dashboard_screen.dart' },
+      'agents': { file: 'lib/screens/agents/agents_screen.dart' },
+      'campaigns': { file: 'lib/screens/campaigns/campaigns_screen.dart' },
+      'contacts': { file: 'lib/screens/contacts/contacts_screen.dart' },
+      'history': { file: 'lib/screens/call_history/call_history_screen.dart' },
+      'create-agent': { file: 'lib/screens/agents/create_edit_agent_screen.dart' },
+      'simulator': { file: 'lib/screens/agents/agent_simulator_screen.dart' },
+      'whatsapp': { file: 'lib/screens/whatsapp/whatsapp_inbox_screen.dart' },
+      'login': { file: 'lib/screens/auth/login_screen.dart' }
+    };
+
+    function switchAppScreen(screenId) {
+      document.querySelectorAll('.screen-view').forEach(e => e.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active'));
+      document.querySelectorAll('.bnav-item').forEach(e => e.classList.remove('active'));
+
+      const targetView = document.getElementById(`view-${screenId}`);
+      if (targetView) targetView.classList.add('active');
+
+      if (screenMeta[screenId]) {
+        document.getElementById('lblActiveScreen').textContent = screenId;
+        document.getElementById('lblDartFile').textContent = screenMeta[screenId].file;
+      }
+
+      const navBtn = Array.from(document.querySelectorAll('.nav-btn')).find(b => b.getAttribute('onclick')?.includes(screenId));
+      if (navBtn) navBtn.classList.add('active');
+
+      const bnavItem = document.getElementById(`tab-${screenId}`);
+      if (bnavItem) bnavItem.classList.add('active');
+    }
+
+    function setDeviceMode(mode) {
+      const device = document.getElementById('phoneDevice');
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+
+      if (mode === 'mobile') {
+        device.className = 'phone-device';
+        document.getElementById('btnModeMobile').classList.add('active');
+      } else if (mode === 'full') {
+        device.className = 'phone-device mode-full-screen';
+        document.getElementById('btnModeFull').classList.add('active');
+      } else if (mode === 'desktop') {
+        device.className = 'phone-device mode-desktop-responsive';
+        document.getElementById('btnModeDesktop').classList.add('active');
+      }
+    }
+
+    let sidebarsHidden = false;
+    function toggleSidebars() {
+      const viewport = document.getElementById('studioViewport');
+      sidebarsHidden = !sidebarsHidden;
+      if (sidebarsHidden) {
+        viewport.classList.add('hide-sidebars');
+      } else {
+        viewport.classList.remove('hide-sidebars');
+      }
+    }
+
+    let isAppDark = false;
+    function toggleAppTheme() {
+      const screen = document.getElementById('mobileScreen');
+      isAppDark = !isAppDark;
+      if (isAppDark) {
+        screen.style.background = '#0f172a';
+        screen.style.color = '#f8fafc';
+        document.querySelectorAll('.sys-status-bar, .flutter-app-header, .flutter-bottom-nav, .card-box, .card-split-item, .agent-card, .campaign-card').forEach(e => {
+          e.style.background = '#1e293b';
+          e.style.borderColor = '#334155';
+          e.style.color = '#f8fafc';
+        });
+      } else {
+        screen.style.background = 'var(--light-grey)';
+        screen.style.color = 'var(--dark-grey)';
+        document.querySelectorAll('.sys-status-bar, .flutter-app-header, .flutter-bottom-nav, .card-box, .card-split-item, .agent-card, .campaign-card').forEach(e => {
+          e.style.background = 'var(--surface-card)';
+          e.style.borderColor = 'var(--border-grey)';
+          e.style.color = 'var(--dark-grey)';
+        });
+      }
+    }
+  </script>
+</body>
+</html>

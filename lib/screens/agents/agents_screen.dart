@@ -6,6 +6,9 @@ import 'package:vani_app/presentation/providers/agents_provider.dart';
 import 'package:vani_app/screens/agents/agent_details_screen.dart';
 import 'package:vani_app/screens/agents/create_edit_agent_screen.dart';
 import 'package:vani_app/screens/agents/agent_simulator_screen.dart';
+import 'package:vani_app/screens/agents/browse_templates_screen.dart';
+import 'package:vani_app/screens/agents/agent_flow_screen.dart';
+import 'package:vani_app/data/services/calls_api_service.dart';
 
 class AgentsScreen extends ConsumerStatefulWidget {
   const AgentsScreen({super.key});
@@ -37,22 +40,82 @@ class _AgentsScreenState extends ConsumerState<AgentsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Agents',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.darkGrey,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Manage your active voice agents',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: AppTheme.mediumGrey,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Agents',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.darkGrey,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Manage active voice agents',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: AppTheme.mediumGrey,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const BrowseTemplatesScreen(),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppTheme.borderGrey),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          icon: const Icon(Icons.grid_view_rounded, size: 13, color: AppTheme.darkGrey),
+                          label: const Text(
+                            'Browse Templates',
+                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
+                          ),
+                        ),
+                        if (!agentsState.isLoading && agentsState.agents.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.lightGreen,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              '${agentsState.agents.length} total',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryGreen,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 
@@ -365,104 +428,100 @@ class _AgentsScreenState extends ConsumerState<AgentsScreen> {
 
           const SizedBox(height: 16),
 
-          // Action Buttons: View, [Simulate], Edit, Delete
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AgentDetailsScreen(agent: agent),
-                      ),
-                    ).then((_) {
-                      ref.read(agentsProvider.notifier).loadAgents();
-                    });
-                  },
+          // Action Buttons Row: Test, Simulate, Flow, Edit, Delete
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // Test Action Button
+                InkWell(
+                  onTap: () => _showQuickTestCallDialog(agent),
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppTheme.purple.withOpacity(0.1),
-                      border: Border.all(color: AppTheme.purple.withOpacity(0.3)),
+                      color: AppTheme.primaryGreen.withOpacity(0.1),
+                      border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    child: const Row(
                       children: [
-                        Icon(
-                          Icons.visibility_outlined,
-                          size: 14,
-                          color: AppTheme.purple,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'View',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.purple,
-                          ),
-                        ),
+                        Icon(Icons.phone_in_talk, size: 13, color: AppTheme.primaryGreen),
+                        SizedBox(width: 4),
+                        Text('Test', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
                       ],
                     ),
                   ),
                 ),
-              ),
-              if (getEngineType(agent) == 'Vani Ultra') ...[
                 const SizedBox(width: 6),
-                Expanded(
-                  child: InkWell(
+
+                // Simulate Button (Vani Ultra / Ultra Realtime)
+                if (getEngineType(agent) == 'Vani Ultra' || getEngineType(agent) == 'Ultra Realtime') ...[
+                  InkWell(
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              AgentSimulatorScreen(agent: agent),
+                          builder: (context) => AgentSimulatorScreen(agent: agent),
                         ),
                       );
                     },
                     borderRadius: BorderRadius.circular(4),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryGreen.withOpacity(0.1),
-                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                        color: Colors.purple.withOpacity(0.1),
+                        border: Border.all(color: Colors.purple.withOpacity(0.3)),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.bolt_outlined,
-                            size: 14,
-                            color: AppTheme.primaryGreen,
-                          ),
+                          Icon(Icons.bolt_outlined, size: 13, color: Colors.purple),
                           SizedBox(width: 4),
-                          Text(
-                            'Simulate',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.primaryGreen,
-                            ),
-                          ),
+                          Text('Simulate', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple)),
                         ],
                       ),
                     ),
                   ),
-                ),
-              ],
-              const SizedBox(width: 6),
-              Expanded(
-                child: InkWell(
+                  const SizedBox(width: 6),
+                ],
+
+                // Flow Action Button
+                InkWell(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            CreateEditAgentScreen(agent: agent),
+                        builder: (context) => AgentFlowScreen(agent: agent),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade800.withOpacity(0.1),
+                      border: Border.all(color: Colors.amber.shade800.withOpacity(0.3)),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.account_tree_outlined, size: 13, color: Colors.amber.shade800),
+                        const SizedBox(width: 4),
+                        Text('Flow', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade800)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+
+                // Edit Button
+                InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CreateEditAgentScreen(agent: agent),
                       ),
                     ).then((_) {
                       ref.read(agentsProvider.notifier).loadAgents();
@@ -470,74 +529,163 @@ class _AgentsScreenState extends ConsumerState<AgentsScreen> {
                   },
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.blue.withOpacity(0.1),
                       border: Border.all(color: Colors.blue.withOpacity(0.3)),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.edit_outlined,
-                          size: 14,
-                          color: Colors.blue,
-                        ),
+                        Icon(Icons.edit_outlined, size: 13, color: Colors.blue),
                         SizedBox(width: 4),
-                        Text(
-                          'Edit',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.blue,
-                          ),
-                        ),
+                        Text('Edit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue)),
                       ],
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    _showDeleteConfirmation(agent);
-                  },
+                const SizedBox(width: 6),
+
+                // Delete Button
+                InkWell(
+                  onTap: () => _showDeleteConfirmation(agent),
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppTheme.errorRed.withOpacity(0.1),
                       border: Border.all(color: AppTheme.errorRed.withOpacity(0.3)),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.delete_outline,
-                          size: 14,
-                          color: AppTheme.errorRed,
-                        ),
+                        Icon(Icons.delete_outline, size: 13, color: AppTheme.errorRed),
                         SizedBox(width: 4),
-                        Text(
-                          'Delete',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.errorRed,
-                          ),
-                        ),
+                        Text('Delete', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.errorRed)),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  void _showQuickTestCallDialog(Agent agent) {
+    final phoneController = TextEditingController();
+    bool isTesting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.surfaceCard,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: const BorderSide(color: AppTheme.borderGrey),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.phone_in_talk, color: AppTheme.primaryGreen),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Test Agent: ${agent.name}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Launch an instant test call session to evaluate agent greeting, prompt responses, and voice quality.',
+                    style: TextStyle(fontSize: 12, color: AppTheme.mediumGrey),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Test Phone Number',
+                      hintText: '+919876543210',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  if (isTesting) ...[
+                    const SizedBox(height: 16),
+                    const Center(
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(color: AppTheme.primaryGreen),
+                          SizedBox(height: 8),
+                          Text('Initiating test call...', style: TextStyle(fontSize: 12, color: AppTheme.mediumGrey)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isTesting ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: AppTheme.mediumGrey)),
+                ),
+                ElevatedButton(
+                  onPressed: isTesting
+                      ? null
+                      : () async {
+                          final phone = phoneController.text.trim();
+                          if (phone.isEmpty) return;
+                          setDialogState(() => isTesting = true);
+                          try {
+                            await ref.read(callsApiServiceProvider).validateCall({
+                              'phone_number': phone,
+                              'agent_id': agent.id,
+                              'call_type': 'outbound',
+                              'test_mode': true,
+                            });
+                            if (context.mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Test call for ${agent.name} initiated successfully!'),
+                                  backgroundColor: AppTheme.primaryGreen,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isTesting = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to trigger test call: $e'),
+                                  backgroundColor: AppTheme.errorRed,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  child: const Text('Start Test Call', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

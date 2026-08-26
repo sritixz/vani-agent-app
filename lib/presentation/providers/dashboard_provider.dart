@@ -16,14 +16,20 @@ class DashboardState {
   final CreditBalanceModel? creditBalance;
   final CurrentSubscriptionModel? currentSubscription;
   final CallStatisticsModel? callStatistics;
+  final Map<String, dynamic>? userStatusMap;
+  final String selectedPeriod; // 'all', 'today', '7d', '30d'
   final bool isLoading;
+  final bool isStatsLoading;
   final String? error;
 
   DashboardState({
     this.creditBalance,
     this.currentSubscription,
     this.callStatistics,
+    this.userStatusMap,
+    this.selectedPeriod = 'all',
     this.isLoading = false,
+    this.isStatsLoading = false,
     this.error,
   });
 
@@ -31,14 +37,20 @@ class DashboardState {
     CreditBalanceModel? creditBalance,
     CurrentSubscriptionModel? currentSubscription,
     CallStatisticsModel? callStatistics,
+    Map<String, dynamic>? userStatusMap,
+    String? selectedPeriod,
     bool? isLoading,
+    bool? isStatsLoading,
     String? error,
   }) {
     return DashboardState(
       creditBalance: creditBalance ?? this.creditBalance,
       currentSubscription: currentSubscription ?? this.currentSubscription,
       callStatistics: callStatistics ?? this.callStatistics,
+      userStatusMap: userStatusMap ?? this.userStatusMap,
+      selectedPeriod: selectedPeriod ?? this.selectedPeriod,
       isLoading: isLoading ?? this.isLoading,
+      isStatsLoading: isStatsLoading ?? this.isStatsLoading,
       error: error,
     );
   }
@@ -58,23 +70,37 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     this._callsApiService,
   ) : super(DashboardState());
 
+  Future<void> changePeriod(String period) async {
+    if (state.selectedPeriod == period && state.callStatistics != null) return;
+    state = state.copyWith(selectedPeriod: period, isStatsLoading: true);
+    try {
+      final periodParam = period == 'all' ? null : period;
+      final stats = await _callsApiService.getCallStatistics(period: periodParam);
+      state = state.copyWith(callStatistics: stats, isStatsLoading: false);
+    } catch (e) {
+      _logger.e('Error changing period statistics: $e');
+      state = state.copyWith(isStatsLoading: false);
+    }
+  }
+
   Future<void> loadDashboardData() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       CreditBalanceModel? creditBalance;
       CurrentSubscriptionModel? currentSubscription;
       CallStatisticsModel? callStatistics;
+      Map<String, dynamic>? userStatusMap;
       String? error;
 
       // Try to fetch from user status endpoint first
       try {
-        final userStatus = await _userApiService.getUserStatus();
-        _logger.d('User Status Response: $userStatus');
+        userStatusMap = await _userApiService.getUserStatus();
+        _logger.d('User Status Response: $userStatusMap');
 
         // Parse credit balance - handle both object and simple number formats
-        dynamic creditData = userStatus['credit_balance'] ?? 
-                            userStatus['creditBalance'] ?? 
-                            userStatus['credits'];
+        dynamic creditData = userStatusMap['credit_balance'] ?? 
+                            userStatusMap['creditBalance'] ?? 
+                            userStatusMap['credits'];
         
         if (creditData != null) {
           try {
@@ -112,11 +138,11 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         }
 
         // Parse subscription plan - check multiple possible field names
-        dynamic subscriptionData = userStatus['subscription_plan'] ?? 
-                                  userStatus['subscriptionPlan'] ?? 
-                                  userStatus['subscription'] ??
-                                  userStatus['subscription_tier'] ??
-                                  userStatus['current_subscription'];
+        dynamic subscriptionData = userStatusMap['subscription_plan'] ?? 
+                                  userStatusMap['subscriptionPlan'] ?? 
+                                  userStatusMap['subscription'] ??
+                                  userStatusMap['subscription_tier'] ??
+                                  userStatusMap['current_subscription'];
         
         if (subscriptionData != null) {
           try {
@@ -169,7 +195,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       // Fetch call statistics
       try {
         _logger.d('Fetching call statistics');
-        callStatistics = await _callsApiService.getCallStatistics();
+        final periodParam = state.selectedPeriod == 'all' ? null : state.selectedPeriod;
+        callStatistics = await _callsApiService.getCallStatistics(period: periodParam);
         _logger.d('Fetched call statistics: $callStatistics');
       } catch (e) {
         _logger.e('Error fetching call statistics: $e');
@@ -180,6 +207,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         creditBalance: creditBalance,
         currentSubscription: currentSubscription,
         callStatistics: callStatistics,
+        userStatusMap: userStatusMap,
         isLoading: false,
         error: error,
       );

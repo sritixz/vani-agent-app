@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vani_app/config/theme.dart';
 import 'package:vani_app/data/models/calls/call_history_model.dart';
 import 'package:vani_app/presentation/providers/calls_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CallHistoryScreen extends ConsumerStatefulWidget {
   const CallHistoryScreen({super.key});
@@ -243,60 +244,62 @@ class _CallHistoryScreenState extends ConsumerState<CallHistoryScreen> {
                   ],
                 ),
               ),
-              // TODO: Uncomment when ready to enable recording download and regenerate summary features
-              // if (call.recordingAvailable == true)
-              //   IconButton(
-              //     icon: const Icon(
-              //       Icons.play_arrow,
-              //       color: AppTheme.primaryGreen,
-              //       size: 20,
-              //     ),
-              //     tooltip: 'Download Recording',
-              //     onPressed: () async {
-              //       _handleDownloadRecording(call.id);
-              //     },
-              //   ),
-              // PopupMenuButton<String>(
-              //   icon: const Icon(
-              //     Icons.more_vert,
-              //     color: AppTheme.mediumGrey,
-              //     size: 20,
-              //   ),
-              //   onSelected: (value) {
-              //     if (value == 'regenerate') {
-              //       _handleRegenerateSummary(call.id);
-              //     } else if (value == 'download') {
-              //       _handleDownloadRecording(call.id, force: true);
-              //     }
-              //   },
-              //   itemBuilder: (context) => [
-              //     const PopupMenuItem(
-              //       value: 'regenerate',
-              //       child: Row(
-              //         children: [
-              //           Icon(Icons.refresh, size: 18, color: AppTheme.darkGrey),
-              //           SizedBox(width: 8),
-              //           Text('Regenerate Summary'),
-              //         ],
-              //       ),
-              //     ),
-              //     if (call.recordingAvailable == true)
-              //       const PopupMenuItem(
-              //         value: 'download',
-              //         child: Row(
-              //           children: [
-              //             Icon(Icons.download, size: 18, color: AppTheme.darkGrey),
-              //             SizedBox(width: 8),
-              //             Text('Force Download Recording'),
-              //           ],
-              //         ),
-              //       ),
-              //   ],
-              // ),
+              if (call.recordingAvailable == true)
+                IconButton(
+                  icon: const Icon(
+                    Icons.play_arrow,
+                    color: AppTheme.primaryGreen,
+                    size: 20,
+                  ),
+                  tooltip: 'Play Recording',
+                  onPressed: () async {
+                    _handleDownloadRecording(call.id);
+                  },
+                ),
+              PopupMenuButton<String>(
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: AppTheme.mediumGrey,
+                  size: 20,
+                ),
+                onSelected: (value) {
+                  if (value == 'regenerate') {
+                    _handleRegenerateSummary(call.id);
+                  } else if (value == 'download') {
+                    _handleDownloadRecording(call.id, force: true);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'regenerate',
+                    child: Row(
+                      children: [
+                        Icon(Icons.refresh, size: 18, color: AppTheme.darkGrey),
+                        SizedBox(width: 8),
+                        Text('Regenerate Summary'),
+                      ],
+                    ),
+                  ),
+                  if (call.recordingAvailable == true)
+                    const PopupMenuItem(
+                      value: 'download',
+                      child: Row(
+                        children: [
+                          Icon(Icons.download, size: 18, color: AppTheme.darkGrey),
+                          SizedBox(width: 8),
+                          Text('Force Download Recording'),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -316,7 +319,6 @@ class _CallHistoryScreenState extends ConsumerState<CallHistoryScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
               Text(
                 duration,
                 style: const TextStyle(
@@ -325,8 +327,7 @@ class _CallHistoryScreenState extends ConsumerState<CallHistoryScreen> {
                   color: AppTheme.mediumGrey,
                 ),
               ),
-              if (call.callType != null) ...[
-                const SizedBox(width: 12),
+              if (call.callType != null)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -339,13 +340,12 @@ class _CallHistoryScreenState extends ConsumerState<CallHistoryScreen> {
                   child: Text(
                     call.callType!.toUpperCase(),
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.mediumGrey,
+                      color: AppTheme.darkGrey,
                     ),
                   ),
                 ),
-              ],
             ],
           ),
           if (call.summary != null || call.humanNotesText != null) ...[
@@ -457,17 +457,23 @@ class _CallHistoryScreenState extends ConsumerState<CallHistoryScreen> {
         final error = result['error'] as String?;
 
         if (success && s3Url != null) {
+          final uri = Uri.tryParse(s3Url);
+          if (uri != null) {
+            canLaunchUrl(uri).then((canLaunch) {
+              if (canLaunch) launchUrl(uri, mode: LaunchMode.externalApplication);
+            });
+          }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(message ?? 'Recording downloaded successfully'),
+              content: Text(message ?? 'Recording URL generated successfully'),
               backgroundColor: AppTheme.successGreen,
               action: SnackBarAction(
-                label: 'View',
+                label: 'Play Audio',
                 textColor: Colors.white,
-                onPressed: () {
-                  // TODO: Open recording URL or play audio
-                  // You can use url_launcher package to open the URL
-                  // launch(s3Url);
+                onPressed: () async {
+                  if (uri != null && await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
                 },
               ),
             ),
