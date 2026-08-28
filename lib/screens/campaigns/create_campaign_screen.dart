@@ -677,21 +677,27 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
         }
 
         if (fileBytes != null && fileBytes.isNotEmpty) {
-          final filePart = MultipartFile.fromBytes(
-            fileBytes,
+          campaignData['contactFile'] = MultipartFile.fromBytes(
+            Uint8List.fromList(fileBytes),
             filename: fileName,
             contentType: mediaType,
           );
-          campaignData['contactFile'] = filePart;
-          campaignData['contact_file'] = filePart;
+          campaignData['contact_file'] = MultipartFile.fromBytes(
+            Uint8List.fromList(fileBytes),
+            filename: fileName,
+            contentType: mediaType,
+          );
         } else if (filePath != null && filePath.isNotEmpty) {
-          final filePart = await MultipartFile.fromFile(
+          campaignData['contactFile'] = await MultipartFile.fromFile(
             filePath,
             filename: fileName,
             contentType: mediaType,
           );
-          campaignData['contactFile'] = filePart;
-          campaignData['contact_file'] = filePart;
+          campaignData['contact_file'] = await MultipartFile.fromFile(
+            filePath,
+            filename: fileName,
+            contentType: mediaType,
+          );
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -725,9 +731,18 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
         }
       }
     } catch (e) {
+      String errorMessage = 'Error: $e';
+      if (e is DioException) {
+        final res = e.response?.data;
+        if (res != null && res is Map && res.containsKey('detail')) {
+          errorMessage = 'Error: ${res['detail']}';
+        } else if (e.message != null && e.message!.isNotEmpty) {
+          errorMessage = 'Error: ${e.message}';
+        }
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text(errorMessage), backgroundColor: AppTheme.errorRed),
         );
       }
     } finally {
@@ -1032,7 +1047,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                                     Text('Use a saved audience', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
                                     SizedBox(height: 2),
                                     Text(
-                                      'Phone number, contact name and custom AI instruction are copied into this campaign when created.',
+                                      'Phone number, contact name and custom AI instruction are copied into this campaign when created. Later list edits will not change a running campaign.',
                                       style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey),
                                     ),
                                   ],
@@ -1042,10 +1057,49 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightGrey,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.borderGrey),
+                          ),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.playlist_add_check, size: 32, color: AppTheme.mediumGrey),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'No saved contact lists yet',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Create a list from the Contacts page, then return here.',
+                                style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.black,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                ),
+                                child: const Text('Open Contacts', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
                           value: _selectedContactListId,
                           decoration: const InputDecoration(
-                            labelText: 'Select Saved Contact List *',
+                            labelText: 'Select Saved Contact List (Optional)',
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.list_alt, color: Colors.purple),
                           ),
