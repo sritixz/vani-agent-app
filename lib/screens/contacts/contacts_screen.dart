@@ -6,6 +6,7 @@ import 'package:vani_app/config/theme.dart';
 import 'package:vani_app/data/services/contacts_api_service.dart';
 import 'package:vani_app/models/contact_model.dart';
 import 'package:vani_app/providers/contacts_provider.dart';
+import 'package:vani_app/providers/saved_lists_provider.dart';
 
 class ContactsScreen extends ConsumerStatefulWidget {
   const ContactsScreen({super.key});
@@ -16,6 +17,7 @@ class ContactsScreen extends ConsumerStatefulWidget {
 
 class _ContactsScreenState extends ConsumerState<ContactsScreen> {
   String _selectedFilter = 'All';
+  final Set<String> _selectedPhoneNumbers = {};
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   Timer? _searchDebounce;
@@ -474,6 +476,241 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
     );
   }
 
+  void _showSavedListsDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final savedLists = ref.watch(savedListsProvider);
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.6,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.list_alt, color: Colors.purple),
+                          SizedBox(width: 8),
+                          Text('Saved Contact Lists', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  if (savedLists.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text('No saved contact lists yet', style: TextStyle(color: AppTheme.mediumGrey)),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: savedLists.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          final list = savedLists[index];
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.lightGrey,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppTheme.borderGrey),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.purple.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.contacts, size: 20, color: Colors.purple),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(list.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey)),
+                                      if (list.description.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(list.description, style: const TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                                      ],
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.purple.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              '${list.phoneNumbers.length} contacts',
+                                              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
+                                  onPressed: () {
+                                    ref.read(savedListsProvider.notifier).deleteList(list.id);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Deleted list "${list.name}"')),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showCreateListDialog() {
+    final listNameController = TextEditingController();
+    final listDescriptionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Row(
+            children: [
+              Icon(Icons.playlist_add, color: Colors.purple),
+              SizedBox(width: 8),
+              Text('Create Contact List', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 14, color: Colors.purple),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _selectedPhoneNumbers.isEmpty
+                              ? 'Select contacts, then save them as a list'
+                              : 'Saving ${_selectedPhoneNumbers.length} selected contacts as a list',
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: listNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'List Name *',
+                    hintText: 'e.g. Q3 High Intent Real Estate Leads',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'Please enter a list name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: listDescriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description (Optional)',
+                    hintText: 'Target audience criteria or notes',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  final name = listNameController.text.trim();
+                  final desc = listDescriptionController.text.trim();
+                  final selectedList = _selectedPhoneNumbers.toList();
+
+                  ref.read(savedListsProvider.notifier).addList(
+                        name: name,
+                        description: desc,
+                        phoneNumbers: selectedList.isNotEmpty ? selectedList : ['+917337592673'],
+                      );
+
+                  Navigator.of(ctx).pop();
+
+                  setState(() {
+                    _selectedPhoneNumbers.clear();
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Contact List "$name" created with ${selectedList.isNotEmpty ? selectedList.length : 1} contacts!'),
+                      backgroundColor: AppTheme.primaryGreen,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Create List', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   String? _getLeadStatusFilter() {
     switch (_selectedFilter) {
       case 'New Leads':
@@ -518,19 +755,82 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                         color: AppTheme.darkGrey,
                       ),
                     ),
-                    ElevatedButton.icon(
-                      onPressed: _showCreateListDialog,
-                      icon: const Icon(Icons.playlist_add, size: 18),
-                      label: const Text('Create List', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _showSavedListsDialog,
+                          icon: const Icon(Icons.list_alt, size: 16, color: Colors.purple),
+                          label: const Text('Lists', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.purple),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: _showCreateListDialog,
+                          icon: const Icon(Icons.playlist_add, size: 16),
+                          label: Text(
+                            _selectedPhoneNumbers.isNotEmpty
+                                ? 'Create List (${_selectedPhoneNumbers.length})'
+                                : 'Create List',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purple,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
+                if (_selectedPhoneNumbers.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${_selectedPhoneNumbers.length} contacts selected',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.purple),
+                        ),
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _selectedPhoneNumbers.clear();
+                                  _selectedPhoneNumbers.addAll(
+                                    contactsState.contacts.map((c) => c.phoneNumber),
+                                  );
+                                });
+                              },
+                              child: const Text('Select All', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple)),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _selectedPhoneNumbers.clear();
+                                });
+                              },
+                              child: const Text('Clear', style: TextStyle(fontSize: 12, color: AppTheme.mediumGrey)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 TextField(
                   controller: _searchController,
@@ -593,6 +893,18 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                       const SizedBox(width: 8),
                       _buildFilterChip('Connected', _selectedFilter == 'Connected'),
                       const SizedBox(width: 8),
+                      _buildFilterChip('Junk / DNC', _selectedFilter == 'Junk / DNC'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Error message
+                if (contactsState.error != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
                       color: AppTheme.errorRed.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppTheme.errorRed),
@@ -783,21 +1095,40 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
   }
 
   Widget _buildContactCard(Contact contact) {
+    final isSelected = _selectedPhoneNumbers.contains(contact.phoneNumber);
     final statusColor = _getStatusColor(contact.status);
     final statusLabel = _getStatusLabel(contact.status);
     final avatarColor = _getAvatarColor(contact.phoneNumber.hashCode);
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.borderGrey),
+        color: isSelected ? Colors.purple.withOpacity(0.04) : Colors.white,
+        border: Border.all(
+          color: isSelected ? Colors.purple : AppTheme.borderGrey,
+          width: isSelected ? 1.5 : 1.0,
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
+          Checkbox(
+            value: isSelected,
+            activeColor: Colors.purple,
+            onChanged: (val) {
+              setState(() {
+                if (val == true) {
+                  _selectedPhoneNumbers.add(contact.phoneNumber);
+                } else {
+                  _selectedPhoneNumbers.remove(contact.phoneNumber);
+                }
+              });
+            },
+          ),
+          const SizedBox(width: 4),
           Container(
-            width: 48,
-            height: 48,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: avatarColor,
               borderRadius: BorderRadius.circular(8),
