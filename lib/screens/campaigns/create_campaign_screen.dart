@@ -9,6 +9,7 @@ import 'package:vani_app/config/theme.dart';
 import 'package:vani_app/data/services/campaigns_api_service.dart';
 import 'package:vani_app/models/campaign_model.dart';
 import 'package:vani_app/presentation/providers/agents_provider.dart';
+import 'package:vani_app/providers/saved_lists_provider.dart';
 import 'package:vani_app/screens/contacts/contacts_screen.dart';
 
 class PreviewRecord {
@@ -1057,64 +1058,99 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppTheme.lightGrey,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.borderGrey),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(Icons.playlist_add_check, size: 32, color: AppTheme.mediumGrey),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'No saved contact lists yet',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey),
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Create a list from the Contacts page, then return here.',
-                                style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 12),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const ContactsScreen(),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.black,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final savedLists = ref.watch(savedListsProvider);
+
+                            if (savedLists.isEmpty) {
+                              return Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.lightGrey,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppTheme.borderGrey),
                                 ),
-                                child: const Text('Open Contacts', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          value: _selectedContactListId,
-                          decoration: const InputDecoration(
-                            labelText: 'Select Saved Contact List (Optional)',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.list_alt, color: Colors.purple),
-                          ),
-                          hint: const Text('Choose list from CRM audience'),
-                          items: const [
-                            DropdownMenuItem(value: 'list_1', child: Text('Q3 Real Estate Leads (500 contacts)')),
-                            DropdownMenuItem(value: 'list_2', child: Text('Healthcare Followup List (250 contacts)')),
-                            DropdownMenuItem(value: 'list_3', child: Text('E-Commerce High Intent Buyers (1,200 contacts)')),
-                          ],
-                          onChanged: (val) => setState(() => _selectedContactListId = val),
+                                child: Column(
+                                  children: [
+                                    const Icon(Icons.playlist_add_check, size: 32, color: AppTheme.mediumGrey),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'No saved contact lists yet',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Create a list from the Contacts page, then return here.',
+                                      style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => const ContactsScreen(),
+                                          ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.black,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                      ),
+                                      child: const Text('Open Contacts', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                DropdownButtonFormField<String>(
+                                  value: savedLists.any((l) => l.id == _selectedContactListId)
+                                      ? _selectedContactListId
+                                      : savedLists.first.id,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Select Saved Contact List *',
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.list_alt, color: Colors.purple),
+                                  ),
+                                  hint: const Text('Choose list from CRM audience'),
+                                  items: savedLists.map((list) {
+                                    return DropdownMenuItem<String>(
+                                      value: list.id,
+                                      child: Text(
+                                        '${list.name} (${list.phoneNumbers.length} contacts)',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) => setState(() => _selectedContactListId = val),
+                                ),
+                                const SizedBox(height: 12),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const ContactsScreen(),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.open_in_new, size: 14),
+                                  label: const Text('Manage Contact Lists', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.black,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ],
