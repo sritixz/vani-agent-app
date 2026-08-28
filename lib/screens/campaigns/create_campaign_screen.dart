@@ -83,7 +83,22 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
     super.initState();
     if (widget.campaign != null) {
       _populateFields(widget.campaign!);
+    } else {
+      _startDateTime = DateTime.now().add(const Duration(minutes: 5));
+      _endDateTime = DateTime.now().add(const Duration(hours: 48, minutes: 5));
+      _startDateTimeController.text = _formatDateTimeForDisplay(_startDateTime);
+      _endDateTimeController.text = _formatDateTimeForDisplay(_endDateTime);
+      _timeZoneController.text = _selectedTimezone;
     }
+  }
+
+  String _getDurationText() {
+    if (_startDateTime == null || _endDateTime == null) return '0h 0m';
+    final diff = _endDateTime!.difference(_startDateTime!);
+    if (diff.isNegative) return 'Invalid range';
+    final hours = diff.inHours;
+    final mins = diff.inMinutes.remainder(60);
+    return '${hours}h ${mins}m';
   }
 
   void _populateFields(Campaign campaign) {
@@ -495,6 +510,25 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
       } else if (_selectedContactTab == 'Contact Lists' && _selectedContactListId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select a contact list')),
+        );
+        return;
+      }
+
+      if (_startDateTime == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select Start Date & Time')),
+        );
+        return;
+      }
+      if (_endDateTime == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select End Date & Time')),
+        );
+        return;
+      }
+      if (_endDateTime!.isBefore(_startDateTime!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('End Date & Time must be after Start Date & Time')),
         );
         return;
       }
@@ -1107,65 +1141,126 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Start Date Time
-              // Start Date Time
-              TextFormField(
-                controller: _startDateTimeController,
-                decoration: InputDecoration(
-                  labelText: 'Start Date & Time (Optional)',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.calendar_today),
-                    onPressed: () => _selectDateTime(_startDateTimeController, true),
-                  ),
-                  hintText: 'YYYY-MM-DD HH:MM',
+              // Campaign Schedule Section Card (Web App Alignment)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // End Date Time
-              TextFormField(
-                controller: _endDateTimeController,
-                decoration: InputDecoration(
-                  labelText: 'End Date & Time (Optional)',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.calendar_today),
-                    onPressed: () => _selectDateTime(_endDateTimeController, false),
-                  ),
-                  hintText: 'YYYY-MM-DD HH:MM',
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Time Zone Dropdown Selector
-              DropdownButtonFormField<String>(
-                value: _selectedTimezone,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'REGION / TIMEZONE',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.public, color: AppTheme.mediumGrey),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-                items: _timezones.map((tz) {
-                  return DropdownMenuItem<String>(
-                    value: tz,
-                    child: Text(
-                      tz,
-                      style: const TextStyle(fontSize: 13),
-                      overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.calendar_month_outlined, size: 18, color: AppTheme.darkGrey),
+                        SizedBox(width: 8),
+                        Text('Campaign Schedule', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                      ],
                     ),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _selectedTimezone = val;
-                      _timeZoneController.text = val;
-                    });
-                  }
-                },
+                    const SizedBox(height: 12),
+
+                    // Departure / Start (Required)
+                    TextFormField(
+                      controller: _startDateTimeController,
+                      decoration: InputDecoration(
+                        labelText: 'DEPARTURE / START *',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.calendar_today),
+                          onPressed: () => _selectDateTime(_startDateTimeController, true),
+                        ),
+                        hintText: 'YYYY-MM-DD HH:MM',
+                      ),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Please select start date and time';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Arrival / End (Required)
+                    TextFormField(
+                      controller: _endDateTimeController,
+                      decoration: InputDecoration(
+                        labelText: 'ARRIVAL / END *',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.calendar_today),
+                          onPressed: () => _selectDateTime(_endDateTimeController, false),
+                        ),
+                        hintText: 'YYYY-MM-DD HH:MM',
+                      ),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Please select end date and time';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Time Zone Dropdown
+                    DropdownButtonFormField<String>(
+                      value: _selectedTimezone,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'REGION / TIMEZONE',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.public, color: AppTheme.mediumGrey),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      items: _timezones.map((tz) {
+                        return DropdownMenuItem<String>(
+                          value: tz,
+                          child: Text(
+                            tz,
+                            style: const TextStyle(fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedTimezone = val;
+                            _timeZoneController.text = val;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Total Campaign Duration Container
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.lightGrey,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.access_time, size: 16, color: AppTheme.darkGrey),
+                          const SizedBox(width: 8),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('TOTAL CAMPAIGN DURATION', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey)),
+                            ],
+                          ),
+                          const Spacer(),
+                          Text(
+                            _getDurationText(),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 20),
 
