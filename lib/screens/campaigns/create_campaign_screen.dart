@@ -9,6 +9,7 @@ import 'package:vani_app/config/theme.dart';
 import 'package:vani_app/data/services/campaigns_api_service.dart';
 import 'package:vani_app/models/campaign_model.dart';
 import 'package:vani_app/presentation/providers/agents_provider.dart';
+import 'package:vani_app/screens/contacts/contacts_screen.dart';
 
 class PreviewRecord {
   final String phone;
@@ -1082,7 +1083,11 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                               const SizedBox(height: 12),
                               ElevatedButton(
                                 onPressed: () {
-                                  Navigator.of(context).pop();
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const ContactsScreen(),
+                                    ),
+                                  );
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.black,
