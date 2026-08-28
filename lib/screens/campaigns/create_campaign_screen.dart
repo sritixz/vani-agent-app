@@ -527,8 +527,16 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
 
       if (_selectedContactTab == 'Google Sheet') {
         campaignData['gsheet_url'] = _gsheetUrlController.text.trim();
+        campaignData['gsheet_column_phone'] = 'phone_number';
+        campaignData['gsheet_column_name'] = 'contact_name';
+        campaignData['gsheet_column_instruction'] = 'notes';
+        campaignData['gsheet_sync_interval_minutes'] = '60';
       } else if (_selectedContactTab == 'Contact Stream') {
-        campaignData['webhook_url'] = _contactStreamUrlController.text.trim();
+        campaignData['stream_mode'] = 'realtime';
+        campaignData['stream_source_filter'] = _contactStreamUrlController.text.trim().isNotEmpty
+            ? _contactStreamUrlController.text.trim()
+            : 'all';
+        campaignData['stream_lead_status_filter'] = 'all';
       } else if (_selectedContactTab == 'Contact Lists') {
         campaignData['contact_list_id'] = _selectedContactListId;
       }
