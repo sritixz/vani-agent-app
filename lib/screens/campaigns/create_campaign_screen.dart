@@ -10,6 +10,22 @@ import 'package:vani_app/data/services/campaigns_api_service.dart';
 import 'package:vani_app/models/campaign_model.dart';
 import 'package:vani_app/presentation/providers/agents_provider.dart';
 
+class PreviewRecord {
+  final String phone;
+  final String formattedPhone;
+  final String name;
+  final String customInstruction;
+  final bool isValid;
+
+  PreviewRecord({
+    required this.phone,
+    required this.formattedPhone,
+    required this.name,
+    required this.customInstruction,
+    required this.isValid,
+  });
+}
+
 class CreateCampaignScreen extends ConsumerStatefulWidget {
   final Campaign? campaign; // For editing existing campaign
 
@@ -34,6 +50,8 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
   DateTime? _endDateTime;
   
   PlatformFile? _selectedFile;
+  List<PreviewRecord> _previewRecords = [];
+  bool _hideInvalidNumbers = false;
   bool _isLoading = false;
 
   // Tier 1 Switches
@@ -116,9 +134,11 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
       );
 
       if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
         setState(() {
-          _selectedFile = result.files.first;
+          _selectedFile = file;
         });
+        await _parseFileRecords(file);
       }
     } catch (e) {
       if (mounted) {
@@ -127,6 +147,289 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
         );
       }
     }
+  }
+
+  void _removeFile() {
+    setState(() {
+      _selectedFile = null;
+      _previewRecords.clear();
+    });
+  }
+
+  Future<void> _parseFileRecords(PlatformFile file) async {
+    try {
+      Uint8List? bytes = file.bytes;
+      if (bytes == null && file.path != null && file.path!.isNotEmpty) {
+        final f = File(file.path!);
+        if (await f.exists()) {
+          bytes = await f.readAsBytes();
+        }
+      }
+
+      if (bytes == null || bytes.isEmpty) return;
+
+      final content = String.fromCharCodes(bytes);
+      final lines = content
+          .split(RegExp(r'\r?\n'))
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
+
+      if (lines.isEmpty) return;
+
+      final headers = lines.first.toLowerCase().split(',').map((h) => h.trim().replaceAll('"', '')).toList();
+
+      int phoneIdx = headers.indexWhere((h) => h.contains('phone') || h.contains('mobile') || h.contains('number'));
+      int nameIdx = headers.indexWhere((h) => h.contains('name') || h.contains('contact'));
+      int instructionIdx = headers.indexWhere((h) => h.contains('instruction') || h.contains('note') || h.contains('custom'));
+
+      if (phoneIdx == -1) phoneIdx = 0;
+      if (nameIdx == -1) nameIdx = 1 < headers.length ? 1 : -1;
+      if (instructionIdx == -1) instructionIdx = 2 < headers.length ? 2 : -1;
+
+      final records = <PreviewRecord>[];
+
+      for (int i = 1; i < lines.length; i++) {
+        final cols = _splitCsvLine(lines[i]);
+        if (cols.isEmpty) continue;
+
+        final rawPhone = phoneIdx < cols.length ? cols[phoneIdx].trim() : '';
+        final rawName = nameIdx != -1 && nameIdx < cols.length ? cols[nameIdx].trim() : '';
+        final rawInstruction = instructionIdx != -1 && instructionIdx < cols.length ? cols[instructionIdx].trim() : '';
+
+        if (rawPhone.isEmpty && rawName.isEmpty) continue;
+
+        String cleanPhone = rawPhone.replaceAll(RegExp(r'[^\d+]'), '');
+        if (!cleanPhone.startsWith('+') && cleanPhone.length == 10) {
+          cleanPhone = '+91$cleanPhone';
+        } else if (!cleanPhone.startsWith('+') && cleanPhone.length == 12 && cleanPhone.startsWith('91')) {
+          cleanPhone = '+$cleanPhone';
+        }
+
+        final isValid = cleanPhone.length >= 10 && (cleanPhone.startsWith('+') || RegExp(r'^\d+$').hasMatch(cleanPhone));
+
+        records.add(PreviewRecord(
+          phone: rawPhone,
+          formattedPhone: cleanPhone.isNotEmpty ? cleanPhone : rawPhone,
+          name: rawName,
+          customInstruction: rawInstruction,
+          isValid: isValid,
+        ));
+      }
+
+      setState(() {
+        _previewRecords = records;
+      });
+    } catch (_) {}
+  }
+
+  List<String> _splitCsvLine(String line) {
+    final result = <String>[];
+    bool inQuotes = false;
+    final sb = StringBuffer();
+
+    for (int i = 0; i < line.length; i++) {
+      final c = line[i];
+      if (c == '"') {
+        inQuotes = !inQuotes;
+      } else if (c == ',' && !inQuotes) {
+        result.add(sb.toString().trim());
+        sb.clear();
+      } else {
+        sb.write(c);
+      }
+    }
+    result.add(sb.toString().trim());
+    return result;
+  }
+
+  void _showDataPreviewDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final recordsToDisplay = _hideInvalidNumbers
+                ? _previewRecords.where((r) => r.isValid).toList()
+                : _previewRecords;
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                constraints: const BoxConstraints(maxHeight: 550),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightGrey,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(Icons.poll_outlined, size: 20, color: AppTheme.darkGrey),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Data Preview', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                              Text(
+                                'Previewing ${recordsToDisplay.length} records',
+                                style: const TextStyle(fontSize: 11, color: AppTheme.mediumGrey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: _hideInvalidNumbers,
+                              activeColor: AppTheme.primaryGreen,
+                              onChanged: (val) {
+                                setModalState(() {
+                                  _hideInvalidNumbers = val ?? false;
+                                });
+                                setState(() {
+                                  _hideInvalidNumbers = val ?? false;
+                                });
+                              },
+                            ),
+                            const Text('Hide Invalid', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      color: AppTheme.lightGrey,
+                      child: const Row(
+                        children: [
+                          Expanded(flex: 3, child: Text('PHONE NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey))),
+                          Expanded(flex: 2, child: Text('NAME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey))),
+                          Expanded(flex: 4, child: Text('CUSTOM_INSTRUCTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey))),
+                        ],
+                      ),
+                    ),
+
+                    Expanded(
+                      child: recordsToDisplay.isEmpty
+                          ? const Center(
+                              child: Text('No records to display', style: TextStyle(fontSize: 12, color: AppTheme.mediumGrey)),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: recordsToDisplay.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1, thickness: 0.5),
+                              itemBuilder: (context, idx) {
+                                final r = recordsToDisplay[idx];
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(r.formattedPhone, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.darkGrey)),
+                                            if (r.isValid) ...[
+                                              const SizedBox(height: 2),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.lightGreen,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: const Text('E.164 CLEANED', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          r.name.isNotEmpty ? r.name : '-',
+                                          style: const TextStyle(fontSize: 11, color: AppTheme.darkGrey),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 4,
+                                        child: Text(
+                                          r.customInstruction.isNotEmpty ? r.customInstruction : '-',
+                                          style: const TextStyle(fontSize: 10, color: AppTheme.mediumGrey),
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+
+                    const SizedBox(height: 8),
+                    const Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 12, color: AppTheme.mediumGrey),
+                        SizedBox(width: 4),
+                        Text('Preview shows cleaned phone numbers in E.164 format.', style: TextStyle(fontSize: 9, color: AppTheme.mediumGrey)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            _removeFile();
+                          },
+                          icon: const Icon(Icons.delete_outline, size: 14, color: AppTheme.errorRed),
+                          label: const Text('Remove File', style: TextStyle(fontSize: 11, color: AppTheme.errorRed, fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppTheme.errorRed),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                          child: const Text('Close Preview', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _selectDateTime(TextEditingController controller, bool isStart) async {
@@ -489,29 +792,80 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
 
                       // Tab Content Rendering
                       if (_selectedContactTab == 'Upload File') ...[
-                        InkWell(
-                          onTap: _pickFile,
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: AppTheme.lightGrey,
-                              border: Border.all(color: AppTheme.borderGrey, style: BorderStyle.solid),
-                              borderRadius: BorderRadius.circular(8),
+                        if (_selectedFile == null)
+                          InkWell(
+                            onTap: _pickFile,
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: AppTheme.lightGrey,
+                                border: Border.all(color: AppTheme.borderGrey, style: BorderStyle.solid),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Column(
+                                children: [
+                                  Icon(Icons.upload_file, color: AppTheme.primaryGreen, size: 36),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Upload Contact Spreadsheet',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text('Excel (.xlsx, .xls, .csv) files only', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                                ],
+                              ),
                             ),
-                            child: Column(
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppTheme.borderGrey),
+                            ),
+                            child: Row(
                               children: [
-                                const Icon(Icons.upload_file, color: AppTheme.primaryGreen, size: 36),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _selectedFile?.name ?? 'Upload Contact Spreadsheet',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey),
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: AppTheme.darkGrey, width: 1.5),
+                                  ),
+                                  child: const Icon(Icons.check, size: 14, color: AppTheme.darkGrey),
                                 ),
-                                const SizedBox(height: 2),
-                                const Text('Excel (.xlsx, .xls, .csv) files only', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Data Loaded Successfully',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${_previewRecords.isEmpty ? "1" : _previewRecords.length} records detected',
+                                        style: const TextStyle(fontSize: 11, color: AppTheme.mediumGrey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: () => _showDataPreviewDialog(context),
+                                  icon: const Icon(Icons.visibility_outlined, size: 14),
+                                  label: const Text('Preview Data', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.black,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    elevation: 0,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                        ),
                         const SizedBox(height: 8),
                         TextButton.icon(
                           onPressed: () {
