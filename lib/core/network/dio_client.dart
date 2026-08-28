@@ -165,6 +165,10 @@ class _AuthInterceptor extends Interceptor {
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
     }
+    if (options.data is FormData) {
+      options.headers.remove('Content-Type');
+      options.contentType = null;
+    }
     handler.next(options);
   }
 
