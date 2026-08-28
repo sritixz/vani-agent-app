@@ -52,9 +52,6 @@ class CampaignsApiService {
     final response = await _dioClient.post(
       ApiEndpoints.campaigns,
       data: formData,
-      options: Options(
-        contentType: 'multipart/form-data',
-      ),
     );
     return Campaign.fromJson(response.data as Map<String, dynamic>);
   }
