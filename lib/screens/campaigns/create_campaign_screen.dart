@@ -515,43 +515,67 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
 
       final campaignData = <String, dynamic>{
         'name': _nameController.text,
-        'agent_id': _agentIdController.text,
         'agentId': _agentIdController.text,
+        'agent_id': _agentIdController.text,
+        'agentIds': '["${_agentIdController.text}"]',
+        'agent_ids': '["${_agentIdController.text}"]',
+        'agentRotationStrategy': 'round_robin',
+        'agent_rotation_strategy': 'round_robin',
         'retries': _retriesController.text,
+        'contactSource': contactSourceMap[_selectedContactTab] ?? 'file',
         'contact_source': contactSourceMap[_selectedContactTab] ?? 'file',
+        'campaignType': _selectedCampaignType == 'standard' ? 'static' : _selectedCampaignType,
         'campaign_type': _selectedCampaignType,
+        'autoFollowupEnabled': _autoFollowupCall ? 'false' : 'false',
         'auto_followup_enabled': _autoFollowupCall ? 'true' : 'false',
+        'whatsappAutomationEnabled': _sendWhatsappMessage ? 'false' : 'false',
         'whatsapp_automation_enabled': _sendWhatsappMessage ? 'true' : 'false',
         if (_multiNumberRotation) 'number_rotation_strategy': 'round_robin',
+        if (_multiNumberRotation) 'numberRotationStrategy': 'round_robin',
       };
 
       if (_selectedContactTab == 'Google Sheet') {
         campaignData['gsheet_url'] = _gsheetUrlController.text.trim();
+        campaignData['gsheetUrl'] = _gsheetUrlController.text.trim();
         campaignData['gsheet_column_phone'] = 'phone_number';
+        campaignData['gsheetColumnPhone'] = 'phone_number';
         campaignData['gsheet_column_name'] = 'contact_name';
+        campaignData['gsheetColumnName'] = 'contact_name';
         campaignData['gsheet_column_instruction'] = 'notes';
+        campaignData['gsheetColumnInstruction'] = 'notes';
         campaignData['gsheet_sync_interval_minutes'] = '60';
+        campaignData['gsheetSyncIntervalMinutes'] = '60';
       } else if (_selectedContactTab == 'Contact Stream') {
         campaignData['stream_mode'] = 'realtime';
+        campaignData['streamMode'] = 'realtime';
         campaignData['stream_source_filter'] = _contactStreamUrlController.text.trim().isNotEmpty
             ? _contactStreamUrlController.text.trim()
             : 'all';
+        campaignData['streamSourceFilter'] = _contactStreamUrlController.text.trim().isNotEmpty
+            ? _contactStreamUrlController.text.trim()
+            : 'all';
         campaignData['stream_lead_status_filter'] = 'all';
+        campaignData['streamLeadStatusFilter'] = 'all';
       } else if (_selectedContactTab == 'Contact Lists') {
         campaignData['contact_list_id'] = _selectedContactListId;
+        campaignData['contactListId'] = _selectedContactListId;
       }
 
       if (_customFirstLineController.text.isNotEmpty) {
         campaignData['custom_first_line'] = _customFirstLineController.text;
+        campaignData['customFirstLine'] = _customFirstLineController.text;
       }
       if (_startDateTime != null) {
         campaignData['start_date_time'] = _startDateTime!.toIso8601String();
+        campaignData['startDateTime'] = _startDateTime!.toIso8601String();
       }
       if (_endDateTime != null) {
         campaignData['end_date_time'] = _endDateTime!.toIso8601String();
+        campaignData['endDateTime'] = _endDateTime!.toIso8601String();
       }
       if (_timeZoneController.text.isNotEmpty) {
-        campaignData['time_zone'] = _timeZoneController.text;
+        campaignData['time_zone'] = _selectedTimezone;
+        campaignData['timeZone'] = _selectedTimezone;
       }
 
       if (_selectedFile != null && _selectedContactTab == 'Upload File') {
@@ -579,17 +603,21 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
         }
 
         if (fileBytes != null && fileBytes.isNotEmpty) {
-          campaignData['contact_file'] = MultipartFile.fromBytes(
+          final filePart = MultipartFile.fromBytes(
             fileBytes,
             filename: fileName,
             contentType: mediaType,
           );
+          campaignData['contactFile'] = filePart;
+          campaignData['contact_file'] = filePart;
         } else if (filePath != null && filePath.isNotEmpty) {
-          campaignData['contact_file'] = await MultipartFile.fromFile(
+          final filePart = await MultipartFile.fromFile(
             filePath,
             filename: fileName,
             contentType: mediaType,
           );
+          campaignData['contactFile'] = filePart;
+          campaignData['contact_file'] = filePart;
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
