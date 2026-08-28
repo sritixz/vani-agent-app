@@ -1,7 +1,10 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:vani_app/config/theme.dart';
 import 'package:vani_app/data/services/campaigns_api_service.dart';
 import 'package:vani_app/models/campaign_model.dart';
@@ -109,6 +112,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv', 'xlsx', 'xls'],
+        withData: true,
       );
 
       if (result != null && result.files.isNotEmpty) {
@@ -200,7 +204,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
     try {
       final service = ref.read(campaignsApiServiceProvider);
       final contactSourceMap = {
-        'Upload File': 'csv',
+        'Upload File': 'file',
         'Google Sheet': 'gsheet',
         'Contact Stream': 'stream',
         'Contact Lists': 'list',
@@ -208,14 +212,14 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
 
       final campaignData = <String, dynamic>{
         'name': _nameController.text,
-        'agentId': _agentIdController.text,
         'agent_id': _agentIdController.text,
+        'agentId': _agentIdController.text,
         'retries': _retriesController.text,
-        'contact_source': contactSourceMap[_selectedContactTab] ?? 'csv',
+        'contact_source': contactSourceMap[_selectedContactTab] ?? 'file',
         'campaign_type': _selectedCampaignType,
-        'multi_number_rotation': _multiNumberRotation,
-        'auto_followup_call': _autoFollowupCall,
-        'send_whatsapp_message': _sendWhatsappMessage,
+        'auto_followup_enabled': _autoFollowupCall ? 'true' : 'false',
+        'whatsapp_automation_enabled': _sendWhatsappMessage ? 'true' : 'false',
+        if (_multiNumberRotation) 'number_rotation_strategy': 'round_robin',
       };
 
       if (_selectedContactTab == 'Google Sheet') {
@@ -240,10 +244,52 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
       }
 
       if (_selectedFile != null && _selectedContactTab == 'Upload File') {
-        campaignData['contact_file'] = await MultipartFile.fromFile(
-          _selectedFile!.path!,
-          filename: _selectedFile!.name,
-        );
+        Uint8List? fileBytes = _selectedFile!.bytes;
+        final filePath = _selectedFile!.path;
+
+        if (fileBytes == null && filePath != null && filePath.isNotEmpty) {
+          try {
+            final file = File(filePath);
+            if (await file.exists()) {
+              fileBytes = await file.readAsBytes();
+            }
+          } catch (_) {}
+        }
+
+        final fileName = _selectedFile!.name;
+        final extension = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
+        MediaType mediaType;
+        if (extension == 'xlsx') {
+          mediaType = MediaType('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        } else if (extension == 'xls') {
+          mediaType = MediaType('application', 'vnd.ms-excel');
+        } else {
+          mediaType = MediaType('text', 'csv');
+        }
+
+        if (fileBytes != null && fileBytes.isNotEmpty) {
+          campaignData['contact_file'] = MultipartFile.fromBytes(
+            fileBytes,
+            filename: fileName,
+            contentType: mediaType,
+          );
+        } else if (filePath != null && filePath.isNotEmpty) {
+          campaignData['contact_file'] = await MultipartFile.fromFile(
+            filePath,
+            filename: fileName,
+            contentType: mediaType,
+          );
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error: Unable to read selected file. Please select the file again.'),
+                backgroundColor: AppTheme.errorRed,
+              ),
+            );
+          }
+          return;
+        }
       }
 
       if (widget.campaign == null) {
@@ -331,6 +377,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                     // Assigned Voice Expert Dropdown Selector
                     DropdownButtonFormField<String>(
                       value: _agentIdController.text.isNotEmpty ? _agentIdController.text : null,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'ASSIGNED VOICE EXPERT *',
                         border: OutlineInputBorder(),
@@ -340,9 +387,20 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                       items: agentsState.agents.map((ag) {
                         return DropdownMenuItem<String>(
                           value: ag.id,
-                          child: Text('${ag.name} (${ag.voice})', style: const TextStyle(fontSize: 13)),
+                          child: Text(
+                            '${ag.name} (${ag.voice})',
+                            style: const TextStyle(fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         );
                       }).toList(),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Please select a voice expert';
+                        }
+                        return null;
+                      },
                       onChanged: widget.campaign != null
                           ? null
                           : (val) {
@@ -693,6 +751,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
               // Time Zone Dropdown Selector
               DropdownButtonFormField<String>(
                 value: _selectedTimezone,
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'REGION / TIMEZONE',
                   border: OutlineInputBorder(),
@@ -702,7 +761,11 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                 items: _timezones.map((tz) {
                   return DropdownMenuItem<String>(
                     value: tz,
-                    child: Text(tz, style: const TextStyle(fontSize: 13)),
+                    child: Text(
+                      tz,
+                      style: const TextStyle(fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   );
                 }).toList(),
                 onChanged: (val) {
