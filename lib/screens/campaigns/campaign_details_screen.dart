@@ -270,6 +270,125 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> w
           ),
           const SizedBox(height: 16),
 
+          // Healthy Banner (Web App Alignment)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green.withOpacity(0.3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Healthy', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green)),
+                      Text('Live contact state & health — auto-refreshes every 30s', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 4 Metric Analytics Cards (Web App Alignment)
+          GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.4,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              // 1. Total Contacts
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('TOTAL CONTACTS', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey)),
+                    SizedBox(height: 4),
+                    Text('1', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                    SizedBox(height: 2),
+                    Text('0 eligible now', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                  ],
+                ),
+              ),
+              // 2. Lead Outcomes
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('LEAD OUTCOMES', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey)),
+                    SizedBox(height: 4),
+                    Row(children: [Text('● ', style: TextStyle(color: Colors.green, fontSize: 10)), Text('0 Qualified', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600))]),
+                    Row(children: [Text('● ', style: TextStyle(color: Colors.red, fontSize: 10)), Text('0 Unqualified', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600))]),
+                    Row(children: [Text('● ', style: TextStyle(color: Colors.grey, fontSize: 10)), Text('1 Neutral', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600))]),
+                  ],
+                ),
+              ),
+              // 3. Call State
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('CALL STATE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey)),
+                    SizedBox(height: 4),
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('In progress', style: TextStyle(fontSize: 10)), Text('0', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))]),
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Completed', style: TextStyle(fontSize: 10)), Text('1', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green))]),
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Failed', style: TextStyle(fontSize: 10)), Text('0', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red))]),
+                  ],
+                ),
+              ),
+              // 4. WhatsApp
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('WHATSAPP', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey)),
+                    SizedBox(height: 4),
+                    Row(children: [Icon(Icons.chat_bubble_outline, size: 12, color: Colors.green), SizedBox(width: 4), Text('0 Sent', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green))]),
+                    SizedBox(height: 2),
+                    Text('0 calls today', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
           // Live Execution Progress Card (Tier 3)
           _SectionCard(
             title: 'EXECUTION PROGRESS & ANALYTICS',
