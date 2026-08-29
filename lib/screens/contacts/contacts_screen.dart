@@ -477,6 +477,12 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
   }
 
   void _showSavedListsDialog() {
+    ref.read(contactsApiServiceProvider).getContactLists().then((rawLists) {
+      if (rawLists.isNotEmpty) {
+        ref.read(savedListsProvider.notifier).loadServerLists(rawLists);
+      }
+    }).catchError((_) {});
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -919,6 +925,21 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                         description: desc,
                         phoneNumbers: selectedList.isNotEmpty ? selectedList : ['+917337592673'],
                       );
+                  ref.read(contactsApiServiceProvider).createContactList(
+                        name: name,
+                        description: desc,
+                        phoneNumbers: selectedList.isNotEmpty ? selectedList : ['+917337592673'],
+                      ).then((res) {
+                        final serverId = (res['id'] ?? res['_id'] ?? res['contact_list_id'])?.toString();
+                        if (serverId != null && serverId.isNotEmpty) {
+                          ref.read(savedListsProvider.notifier).addList(
+                                name: name,
+                                description: desc,
+                                phoneNumbers: selectedList.isNotEmpty ? selectedList : ['+917337592673'],
+                                id: serverId,
+                              );
+                        }
+                      }).catchError((_) {});
 
                   Navigator.of(ctx).pop();
 

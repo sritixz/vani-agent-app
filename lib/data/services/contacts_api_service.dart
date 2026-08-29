@@ -225,7 +225,14 @@ class ContactsApiService {
       } else if (response.data is Map<String, dynamic> && response.data['lists'] is List) {
         return (response.data['lists'] as List).cast<Map<String, dynamic>>();
       }
-    } catch (_) {}
+    } catch (_) {
+      try {
+        final response = await _dioClient.get('/api/audiences');
+        if (response.data is List) {
+          return (response.data as List).cast<Map<String, dynamic>>();
+        }
+      } catch (_) {}
+    }
     return [];
   }
 }
