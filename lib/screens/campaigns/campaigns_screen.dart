@@ -501,6 +501,14 @@ class _CampaignCard extends ConsumerWidget {
                             icon: const Icon(Icons.pause, size: 14, color: Colors.orange),
                             label: const Text('Pause', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
                           ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                          tooltip: 'Delete Campaign',
+                          onPressed: () => _deleteCampaign(context, ref),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -532,12 +540,15 @@ class _CampaignCard extends ConsumerWidget {
                             color: AppTheme.lightGreen,
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.table_chart, size: 10, color: AppTheme.primaryGreen),
                               SizedBox(width: 2),
-                              Text('GSheet', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                              Text(
+                                campaign.contactSource.toUpperCase(),
+                                style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
+                              ),
                             ],
                           ),
                         ),
