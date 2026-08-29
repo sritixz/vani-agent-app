@@ -585,8 +585,8 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
       final contactSourceMap = {
         'Upload File': 'file',
         'Google Sheet': 'gsheet',
-        'Contact Stream': 'stream',
-        'Contact Lists': 'list',
+        'Contact Stream': 'contact_stream',
+        'Contact Lists': 'contact_list',
       };
 
       final campaignData = <String, dynamic>{
@@ -635,6 +635,11 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
       } else if (_selectedContactTab == 'Contact Lists') {
         campaignData['contact_list_id'] = _selectedContactListId;
         campaignData['contactListId'] = _selectedContactListId;
+        if (_selectedContactListName != null) {
+          campaignData['contact_list_name'] = _selectedContactListName;
+          campaignData['contactListName'] = _selectedContactListName;
+          campaignData['contact_file_name'] = 'contact_list_${_selectedContactListId}.json';
+        }
       }
 
       if (_customFirstLineController.text.isNotEmpty) {
