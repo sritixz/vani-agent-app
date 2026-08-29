@@ -571,14 +571,29 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                                     ],
                                   ),
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
-                                  onPressed: () {
-                                    ref.read(savedListsProvider.notifier).deleteList(list.id);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Deleted list "${list.name}"')),
-                                    );
-                                  },
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'Preview Contact List',
+                                      icon: const Icon(Icons.visibility_outlined, color: AppTheme.darkGrey, size: 20),
+                                      onPressed: () => _showPreviewListModal(list),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Edit Contact List',
+                                      icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20),
+                                      onPressed: () => _showEditListModal(list),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Delete Contact List',
+                                      icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
+                                      onPressed: () {
+                                        ref.read(savedListsProvider.notifier).deleteList(list.id);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Deleted list "${list.name}"')),
+                                        );
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -586,6 +601,226 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                         },
                       ),
                     ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showPreviewListModal(SavedContactList list) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.list_alt, color: Colors.purple, size: 20),
+                          const SizedBox(width: 8),
+                          Text(list.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: Colors.purple.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            child: Text('${list.phoneNumbers.length} contacts', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      const Text('Saved contact list', style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey)),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search this list by name, phone or email...',
+                  prefixIcon: const Icon(Icons.search, size: 18, color: AppTheme.mediumGrey),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: list.phoneNumbers.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, idx) {
+                    final phone = list.phoneNumbers[idx];
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceCard,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.borderGrey),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(phone, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(4)),
+                                child: const Text('New', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('OUTCOME', style: TextStyle(fontSize: 9, color: AppTheme.mediumGrey)),
+                              Text('● Neutral', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.darkGrey)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditListModal(SavedContactList list) {
+    final nameController = TextEditingController(text: list.name);
+    final descController = TextEditingController(text: list.description);
+    final phoneNumbers = List<String>.from(list.phoneNumbers);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.edit_note, color: Colors.blue),
+                          SizedBox(width: 8),
+                          Text('Edit Contact List', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'List Name *', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: descController,
+                    decoration: const InputDecoration(labelText: 'Description (Optional)', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('CONTACTS (${phoneNumbers.length})', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: phoneNumbers.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (context, idx) {
+                        final phone = phoneNumbers[idx];
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightGrey,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppTheme.borderGrey),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(phone, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                                onPressed: () {
+                                  setModalState(() {
+                                    phoneNumbers.removeAt(idx);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final name = nameController.text.trim();
+                        if (name.isNotEmpty) {
+                          ref.read(savedListsProvider.notifier).deleteList(list.id);
+                          ref.read(savedListsProvider.notifier).addList(
+                                name: name,
+                                description: descController.text.trim(),
+                                phoneNumbers: phoneNumbers.isNotEmpty ? phoneNumbers : ['+917337592673'],
+                              );
+                          Navigator.of(ctx).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Updated list "$name"'), backgroundColor: AppTheme.primaryGreen),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                      child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
                 ],
               ),
             );
