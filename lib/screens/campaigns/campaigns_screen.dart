@@ -7,6 +7,8 @@ import 'package:vani_app/models/campaign_model.dart';
 import 'package:vani_app/screens/campaigns/campaign_details_screen.dart';
 import 'package:vani_app/screens/campaigns/create_campaign_screen.dart';
 import 'package:vani_app/screens/campaigns/update_campaign_screen.dart';
+import 'package:vani_app/screens/campaigns/widgets/dialing_config_dialog.dart';
+import 'package:vani_app/screens/campaigns/widgets/edit_automation_dialog.dart';
 import 'package:vani_app/utils/date_time_utils.dart';
 
 // State provider for campaigns
@@ -715,44 +717,22 @@ class _CampaignCard extends ConsumerWidget {
                   },
                   icon: const Icon(Icons.bar_chart, size: 18, color: Colors.blue),
                 ),
-                // Config Icon
+                // Config Icon (Execution Parameters & Dialing Configuration)
                 IconButton(
-                  tooltip: 'Execution Parameters',
+                  tooltip: 'Execution Parameters & Dialing Configuration',
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Retries: ${campaign.retries} · Timezone: ${campaign.timeZone ?? "UTC"}')),
-                    );
+                    DialingConfigDialog.show(context, campaign);
                   },
                   icon: const Icon(Icons.tune, size: 18, color: AppTheme.darkGrey),
                 ),
-                // Robot Bot Config Icon
+                // Robot Bot Config Icon (Edit Automation Settings)
                 IconButton(
                   tooltip: 'Robot Automation Config',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Row(
-                          children: [
-                            Icon(Icons.smart_toy, color: AppTheme.primaryGreen),
-                            SizedBox(width: 8),
-                            Text('Robot Config', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        content: const Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Automated AI bot is active for this campaign.', style: TextStyle(fontSize: 12)),
-                            SizedBox(height: 8),
-                            Text('• Sentiment auto-stop: Active\n• Auto Follow-up: Enabled\n• WhatsApp outreach: Active', style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey)),
-                          ],
-                        ),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-                        ],
-                      ),
-                    );
+                  onPressed: () async {
+                    final result = await EditAutomationDialog.show(context, campaign);
+                    if (result == true) {
+                      onRefresh();
+                    }
                   },
                   icon: const Icon(Icons.smart_toy_outlined, size: 18, color: Colors.purple),
                 ),

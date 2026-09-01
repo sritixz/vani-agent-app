@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:vani_app/config/theme.dart';
 import 'package:vani_app/data/services/campaigns_api_service.dart';
 import 'package:vani_app/models/campaign_model.dart';
@@ -29,7 +31,7 @@ class PreviewRecord {
 }
 
 class CreateCampaignScreen extends ConsumerStatefulWidget {
-  final Campaign? campaign; // For editing existing campaign
+  final Campaign? campaign;
 
   const CreateCampaignScreen({super.key, this.campaign});
 
@@ -47,21 +49,39 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
   final _startDateTimeController = TextEditingController();
   final _endDateTimeController = TextEditingController();
   final _timeZoneController = TextEditingController(text: 'UTC');
-  
+
+  // Agent Rotation
+  final Set<String> _selectedRotationAgentIds = {};
+  bool _isAgentRotationExpanded = true;
+
+  // Qualification Settings Controllers (Quick Qualify)
+  final _callWindowStartController = TextEditingController(text: '9');
+  final _callWindowEndController = TextEditingController(text: '20');
+  final _cooldownController = TextEditingController(text: '30');
+  final _maxCallsPerDayController = TextEditingController(text: '5');
+  final _shortCallController = TextEditingController(text: '15');
+  final _longCallController = TextEditingController(text: '60');
+  final _maxDaysController = TextEditingController(text: '10');
+  final _autoDisqualifyDaysController = TextEditingController(text: '5');
+
   DateTime? _startDateTime;
   DateTime? _endDateTime;
-  
+
   PlatformFile? _selectedFile;
   List<PreviewRecord> _previewRecords = [];
   bool _hideInvalidNumbers = false;
   bool _isLoading = false;
 
-  // Tier 1 Switches
+  // Switches & WhatsApp Auto Follow-up Settings
   bool _multiNumberRotation = false;
   bool _autoFollowupCall = false;
   bool _sendWhatsappMessage = false;
+  String _whatsappTriggerType = 'no_answer';
+  String _whatsappTemplateId = 'template_followup_1';
+  final _whatsappEscalationRoundController = TextEditingController(text: '3');
+  final _whatsappMaxPerDayController = TextEditingController(text: '1');
 
-  // Tier 2 Contact Source Tabs & Campaign Types
+  // Contact Source Tabs & Campaign Types
   String _selectedContactTab = 'Upload File'; // 'Upload File', 'Google Sheet', 'Contact Stream', 'Contact Lists'
   final _gsheetUrlController = TextEditingController();
   final _contactStreamUrlController = TextEditingController();
@@ -109,7 +129,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
     _agentIdController.text = campaign.agentId;
     _retriesController.text = campaign.retries.toString();
     _customFirstLineController.text = campaign.customFirstLine ?? '';
-    
+
     if (campaign.startDateTime != null) {
       _startDateTime = DateTime.tryParse(campaign.startDateTime!);
       _startDateTimeController.text = _formatDateTimeForDisplay(_startDateTime);
@@ -118,7 +138,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
       _endDateTime = DateTime.tryParse(campaign.endDateTime!);
       _endDateTimeController.text = _formatDateTimeForDisplay(_endDateTime);
     }
-    
+
     _timeZoneController.text = campaign.timeZone ?? 'UTC';
   }
 
@@ -139,7 +159,43 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
     _timeZoneController.dispose();
     _gsheetUrlController.dispose();
     _contactStreamUrlController.dispose();
+    _callWindowStartController.dispose();
+    _callWindowEndController.dispose();
+    _cooldownController.dispose();
+    _maxCallsPerDayController.dispose();
+    _shortCallController.dispose();
+    _longCallController.dispose();
+    _maxDaysController.dispose();
+    _autoDisqualifyDaysController.dispose();
+    _whatsappEscalationRoundController.dispose();
+    _whatsappMaxPerDayController.dispose();
     super.dispose();
+  }
+
+  Future<void> _downloadSampleTemplate() async {
+    const rawUrl = 'https://github.com/NamastegSpider/uploadsfortesting/raw/refs/heads/main/vaniagent-sample.xlsx';
+    const viewerUrl = 'https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fraw.githubusercontent.com%2FNamastegSpider%2Fuploadsfortesting%2Frefs%2Fheads%2Fmain%2Fvaniagent-sample.xlsx&wdOrigin=BROWSELINK';
+
+    final uriViewer = Uri.parse(viewerUrl);
+    final uriRaw = Uri.parse(rawUrl);
+
+    try {
+      if (await canLaunchUrl(uriViewer)) {
+        await launchUrl(uriViewer, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(uriRaw)) {
+        await launchUrl(uriRaw, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      try {
+        await launchUrl(uriRaw, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Downloading sample template... $e'), backgroundColor: AppTheme.primaryGreen),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _pickFile() async {
@@ -195,7 +251,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
       if (isBinary) {
         final rawText = String.fromCharCodes(bytes.where((b) => (b >= 32 && b <= 126) || b == 10 || b == 13));
         final phoneMatches = RegExp(r'(\+?\d{10,13})').allMatches(rawText).map((m) => m.group(0)!).toSet().toList();
-        
+
         final records = <PreviewRecord>[];
         if (phoneMatches.isNotEmpty) {
           for (int i = 0; i < phoneMatches.length; i++) {
@@ -492,7 +548,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
   Future<void> _selectDateTime(TextEditingController controller, bool isStart) async {
     final currentDateTime = isStart ? _startDateTime : _endDateTime;
     final initialDate = currentDateTime ?? DateTime.now();
-    
+
     final date = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -514,7 +570,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
           time.hour,
           time.minute,
         );
-        
+
         setState(() {
           if (isStart) {
             _startDateTime = dateTime;
@@ -549,11 +605,19 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
           const SnackBar(content: Text('Please enter a Contact Stream Webhook URL')),
         );
         return;
-      } else if (_selectedContactTab == 'Contact Lists' && _selectedContactListId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a contact list')),
-        );
-        return;
+      } else if (_selectedContactTab == 'Contact Lists') {
+        if (_selectedContactListId == null) {
+          final lists = ref.read(savedListsProvider);
+          if (lists.isNotEmpty) {
+            _selectedContactListId = lists.first.id;
+          }
+        }
+        if (_selectedContactListId == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select or create a contact list')),
+          );
+          return;
+        }
       }
 
       if (_startDateTime == null) {
@@ -589,74 +653,65 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
         'Contact Lists': 'contact_list',
       };
 
+      final allAgentIds = [_agentIdController.text, ..._selectedRotationAgentIds].where((id) => id.isNotEmpty).toList();
+      final startFormatted = _startDateTime != null
+          ? '${_startDateTime!.year.toString().padLeft(4, '0')}-${_startDateTime!.month.toString().padLeft(2, '0')}-${_startDateTime!.day.toString().padLeft(2, '0')}T${_startDateTime!.hour.toString().padLeft(2, '0')}:${_startDateTime!.minute.toString().padLeft(2, '0')}'
+          : '';
+      final endFormatted = _endDateTime != null
+          ? '${_endDateTime!.year.toString().padLeft(4, '0')}-${_endDateTime!.month.toString().padLeft(2, '0')}-${_endDateTime!.day.toString().padLeft(2, '0')}T${_endDateTime!.hour.toString().padLeft(2, '0')}:${_endDateTime!.minute.toString().padLeft(2, '0')}'
+          : '';
+
       final campaignData = <String, dynamic>{
         'name': _nameController.text,
         'agentId': _agentIdController.text,
         'agent_id': _agentIdController.text,
-        'agentIds': '["${_agentIdController.text}"]',
-        'agent_ids': '["${_agentIdController.text}"]',
+        'agentIds': jsonEncode(allAgentIds),
+        'additional_agent_ids': _selectedRotationAgentIds.toList(),
         'agentRotationStrategy': 'round_robin',
         'agent_rotation_strategy': 'round_robin',
-        'retries': _retriesController.text,
+        'retries': _retriesController.text.isNotEmpty ? _retriesController.text : '0',
         'contactSource': contactSourceMap[_selectedContactTab] ?? 'file',
         'contact_source': contactSourceMap[_selectedContactTab] ?? 'file',
         'campaignType': _selectedCampaignType == 'standard' ? 'static' : _selectedCampaignType,
-        'campaign_type': _selectedCampaignType,
-        'autoFollowupEnabled': _autoFollowupCall ? 'false' : 'false',
+        'campaign_type': _selectedCampaignType == 'standard' ? 'static' : _selectedCampaignType,
+        'timeZone': _selectedTimezone,
+        'time_zone': _selectedTimezone,
+        if (_startDateTime != null) 'startDateTime': startFormatted,
+        if (_startDateTime != null) 'start_date_time': startFormatted,
+        if (_endDateTime != null) 'endDateTime': endFormatted,
+        if (_endDateTime != null) 'end_date_time': endFormatted,
+        'autoFollowupEnabled': _autoFollowupCall ? 'true' : 'false',
         'auto_followup_enabled': _autoFollowupCall ? 'true' : 'false',
-        'whatsappAutomationEnabled': _sendWhatsappMessage ? 'false' : 'false',
+        'whatsappAutomationEnabled': _sendWhatsappMessage ? 'true' : 'false',
         'whatsapp_automation_enabled': _sendWhatsappMessage ? 'true' : 'false',
+        'whatsapp_trigger_type': _whatsappTriggerType,
+        'whatsappTriggerType': _whatsappTriggerType,
+        'whatsapp_template_id': _whatsappTemplateId,
+        'whatsappTemplateId': _whatsappTemplateId,
+        'whatsapp_escalation_enabled': _sendWhatsappMessage ? 'true' : 'false',
+        'whatsapp_escalation_after_round': int.tryParse(_whatsappEscalationRoundController.text) ?? 3,
+        'whatsapp_escalation_max_per_day': int.tryParse(_whatsappMaxPerDayController.text) ?? 1,
         if (_multiNumberRotation) 'number_rotation_strategy': 'round_robin',
-        if (_multiNumberRotation) 'numberRotationStrategy': 'round_robin',
+        if (_selectedCampaignType == 'quick_qualify') ...{
+          'call_window_start': int.tryParse(_callWindowStartController.text) ?? 9,
+          'call_window_end': int.tryParse(_callWindowEndController.text) ?? 20,
+          'no_answer_cooldown_minutes': int.tryParse(_cooldownController.text) ?? 30,
+          'max_attempts_per_day': int.tryParse(_maxCallsPerDayController.text) ?? 5,
+          'short_call_threshold_seconds': int.tryParse(_shortCallController.text) ?? 15,
+          'long_call_threshold_seconds': int.tryParse(_longCallController.text) ?? 60,
+          'max_campaign_days': int.tryParse(_maxDaysController.text) ?? 10,
+          'max_qualification_rounds': int.tryParse(_autoDisqualifyDaysController.text) ?? 5,
+        },
       };
 
       if (_selectedContactTab == 'Google Sheet') {
         campaignData['gsheet_url'] = _gsheetUrlController.text.trim();
         campaignData['gsheetUrl'] = _gsheetUrlController.text.trim();
-        campaignData['gsheet_column_phone'] = 'phone_number';
-        campaignData['gsheetColumnPhone'] = 'phone_number';
-        campaignData['gsheet_column_name'] = 'contact_name';
-        campaignData['gsheetColumnName'] = 'contact_name';
-        campaignData['gsheet_column_instruction'] = 'notes';
-        campaignData['gsheetColumnInstruction'] = 'notes';
-        campaignData['gsheet_sync_interval_minutes'] = '60';
-        campaignData['gsheetSyncIntervalMinutes'] = '60';
-      } else if (_selectedContactTab == 'Contact Stream') {
-        campaignData['stream_mode'] = 'realtime';
-        campaignData['streamMode'] = 'realtime';
-        campaignData['stream_source_filter'] = _contactStreamUrlController.text.trim().isNotEmpty
-            ? _contactStreamUrlController.text.trim()
-            : 'all';
-        campaignData['streamSourceFilter'] = _contactStreamUrlController.text.trim().isNotEmpty
-            ? _contactStreamUrlController.text.trim()
-            : 'all';
-        campaignData['stream_lead_status_filter'] = 'all';
-        campaignData['streamLeadStatusFilter'] = 'all';
       } else if (_selectedContactTab == 'Contact Lists') {
         campaignData['contact_list_id'] = _selectedContactListId;
         campaignData['contactListId'] = _selectedContactListId;
-        if (_selectedContactListName != null) {
-          campaignData['contact_list_name'] = _selectedContactListName;
-          campaignData['contactListName'] = _selectedContactListName;
-          campaignData['contact_file_name'] = 'contact_list_${_selectedContactListId}.json';
-        }
-      }
-
-      if (_customFirstLineController.text.isNotEmpty) {
-        campaignData['custom_first_line'] = _customFirstLineController.text;
-        campaignData['customFirstLine'] = _customFirstLineController.text;
-      }
-      if (_startDateTime != null) {
-        campaignData['start_date_time'] = _startDateTime!.toIso8601String();
-        campaignData['startDateTime'] = _startDateTime!.toIso8601String();
-      }
-      if (_endDateTime != null) {
-        campaignData['end_date_time'] = _endDateTime!.toIso8601String();
-        campaignData['endDateTime'] = _endDateTime!.toIso8601String();
-      }
-      if (_timeZoneController.text.isNotEmpty) {
-        campaignData['time_zone'] = _selectedTimezone;
-        campaignData['timeZone'] = _selectedTimezone;
+      } else if (_selectedContactTab == 'Contact Stream') {
+        campaignData['contact_stream_url'] = _contactStreamUrlController.text.trim();
       }
 
       if (_selectedFile != null && _selectedContactTab == 'Upload File') {
@@ -689,67 +744,20 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
             filename: fileName,
             contentType: mediaType,
           );
-          campaignData['contact_file'] = MultipartFile.fromBytes(
-            Uint8List.fromList(fileBytes),
-            filename: fileName,
-            contentType: mediaType,
-          );
-        } else if (filePath != null && filePath.isNotEmpty) {
-          campaignData['contactFile'] = await MultipartFile.fromFile(
-            filePath,
-            filename: fileName,
-            contentType: mediaType,
-          );
-          campaignData['contact_file'] = await MultipartFile.fromFile(
-            filePath,
-            filename: fileName,
-            contentType: mediaType,
-          );
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Error: Unable to read selected file. Please select the file again.'),
-                backgroundColor: AppTheme.errorRed,
-              ),
-            );
-          }
-          return;
         }
       }
 
-      if (widget.campaign == null) {
-        // Create new campaign
-        await service.createCampaign(campaignData);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Campaign created successfully')),
-          );
-          Navigator.of(context).pop(true);
-        }
-      } else {
-        // Update existing campaign
-        await service.updateCampaign(widget.campaign!.id, campaignData);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Campaign updated successfully')),
-          );
-          Navigator.of(context).pop(true);
-        }
-      }
-    } catch (e) {
-      String errorMessage = 'Error: $e';
-      if (e is DioException) {
-        final res = e.response?.data;
-        if (res != null && res is Map && res.containsKey('detail')) {
-          errorMessage = 'Error: ${res['detail']}';
-        } else if (e.message != null && e.message!.isNotEmpty) {
-          errorMessage = 'Error: ${e.message}';
-        }
-      }
+      await service.createCampaign(campaignData);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: AppTheme.errorRed),
+          const SnackBar(content: Text('Campaign created successfully'), backgroundColor: AppTheme.primaryGreen),
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.errorRed),
         );
       }
     } finally {
@@ -778,7 +786,25 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Campaign Essentials Section Card
+              // Header Title
+              const Center(
+                child: Column(
+                  children: [
+                    Text(
+                      'Start a Campaign',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Connect with thousands of customers in hours rather than days.',
+                      style: TextStyle(fontSize: 12, color: AppTheme.mediumGrey),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 1. Campaign Essentials Section Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -789,8 +815,15 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Campaign Essentials', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
-                    const SizedBox(height: 12),
+                    const Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 18, color: AppTheme.darkGrey),
+                        SizedBox(width: 8),
+                        Text('Campaign Essentials', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
                     // Campaign Designation Input
                     TextFormField(
                       controller: _nameController,
@@ -836,24 +869,155 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                         }
                         return null;
                       },
-                      onChanged: widget.campaign != null
-                          ? null
-                          : (val) {
-                              if (val != null) {
-                                final selected = agentsState.agents.firstWhere((a) => a.id == val);
-                                setState(() {
-                                  _agentIdController.text = val;
-                                  _agentNameController.text = selected.name;
-                                });
-                              }
-                            },
+                      onChanged: (val) {
+                        if (val != null) {
+                          final selected = agentsState.agents.firstWhere((a) => a.id == val);
+                          setState(() {
+                            _agentIdController.text = val;
+                            _agentNameController.text = selected.name;
+                          });
+                        }
+                      },
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
 
-              // Multi-Number Rotation Switch (Web App Alignment)
+              // 2. Agent Rotation Section (Matching Website Image 1)
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: Column(
+                  children: [
+                    InkWell(
+                      onTap: () => setState(() => _isAgentRotationExpanded = !_isAgentRotationExpanded),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.people_outline, size: 20, color: AppTheme.darkGrey),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Agent Rotation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.darkGrey)),
+                                  Text('Optional — click to select additional agents', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              _isAgentRotationExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                              color: AppTheme.mediumGrey,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    if (_isAgentRotationExpanded) ...[
+                      const Divider(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'The primary agent remains the fail-safe. Each option shows its currently linked number and greeting.',
+                              style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Agent Items List with Checkboxes
+                            ...agentsState.agents.map((ag) {
+                              final isSelected = _selectedRotationAgentIds.contains(ag.id);
+                              final isPrimary = ag.id == _agentIdController.text;
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? AppTheme.lightGreen.withOpacity(0.4) : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: isSelected ? AppTheme.primaryGreen : AppTheme.borderGrey),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Checkbox(
+                                      value: isSelected || isPrimary,
+                                      activeColor: AppTheme.primaryGreen,
+                                      onChanged: isPrimary
+                                          ? null
+                                          : (val) {
+                                              setState(() {
+                                                if (val == true) {
+                                                  _selectedRotationAgentIds.add(ag.id);
+                                                } else {
+                                                  _selectedRotationAgentIds.remove(ag.id);
+                                                }
+                                              });
+                                            },
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  ag.name,
+                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey),
+                                                ),
+                                              ),
+                                              const Text(
+                                                '+917965250813',
+                                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Greeting: ${ag.greetingLine ?? "Hello, how can I help you today?"}',
+                                            style: const TextStyle(fontSize: 10, color: AppTheme.mediumGrey),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.lightGrey,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '${_selectedRotationAgentIds.length + (_agentIdController.text.isNotEmpty ? 1 : 0)} / 10 agents selected',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Multi-Number Rotation Switch
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
@@ -878,6 +1042,280 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                       value: _multiNumberRotation,
                       activeColor: AppTheme.primaryGreen,
                       onChanged: (val) => setState(() => _multiNumberRotation = val),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Auto Follow-up for WhatsApp & Escalation Settings Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(Icons.chat, size: 18, color: Colors.green),
+                        ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Auto Follow-up for WhatsApp', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                              Text('Automatically send WhatsApp messages after unreached or completed calls', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _sendWhatsappMessage,
+                          activeColor: Colors.green,
+                          onChanged: (val) => setState(() => _sendWhatsappMessage = val),
+                        ),
+                      ],
+                    ),
+
+                    if (_sendWhatsappMessage) ...[
+                      const Divider(height: 24),
+                      const Text(
+                        'WhatsApp Escalation & Trigger Configuration',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Row 1: Trigger Event & Template
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _whatsappTriggerType,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Trigger Event',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'no_answer', child: Text('On No Answer / Unreachable', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'busy', child: Text('On Line Busy', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'completed', child: Text('On Call Completed', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'always', child: Text('Always After Call', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) setState(() => _whatsappTriggerType = val);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _whatsappTemplateId,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'WhatsApp Template',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'template_followup_1', child: Text('Default Followup Template', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'template_qual_reminder', child: Text('Lead Qualification Reminder', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'template_confirm', child: Text('Appointment Confirmation', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) setState(() => _whatsappTemplateId = val);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Row 2: Escalate After Call Round & Max Messages Per Day
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _whatsappEscalationRoundController,
+                              decoration: const InputDecoration(
+                                labelText: 'Escalate After Call Round',
+                                hintText: 'e.g. 3',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _whatsappMaxPerDayController,
+                              decoration: const InputDecoration(
+                                labelText: 'Max Messages / Day',
+                                hintText: 'e.g. 1',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Campaign Schedule Container (Matching Website Image 3)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.calendar_month_outlined, size: 18, color: AppTheme.darkGrey),
+                        SizedBox(width: 8),
+                        Text(
+                          'Campaign Schedule',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Departure / Start & Arrival / End
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _startDateTimeController,
+                            readOnly: true,
+                            onTap: () => _selectDateTime(_startDateTimeController, true),
+                            decoration: const InputDecoration(
+                              labelText: 'DEPARTURE / START *',
+                              hintText: 'dd/mm/yyyy --:--',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                              prefixIcon: Icon(Icons.event_outlined, size: 18, color: AppTheme.primaryGreen),
+                              suffixIcon: Icon(Icons.calendar_today, size: 14),
+                            ),
+                            validator: (val) {
+                              if (widget.campaign == null && (val == null || val.trim().isEmpty)) {
+                                return 'Select start date & time';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _endDateTimeController,
+                            readOnly: true,
+                            onTap: () => _selectDateTime(_endDateTimeController, false),
+                            decoration: const InputDecoration(
+                              labelText: 'ARRIVAL / END *',
+                              hintText: 'dd/mm/yyyy --:--',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                              prefixIcon: Icon(Icons.event_busy_outlined, size: 18, color: AppTheme.errorRed),
+                              suffixIcon: Icon(Icons.calendar_today, size: 14),
+                            ),
+                            validator: (val) {
+                              if (widget.campaign == null && (val == null || val.trim().isEmpty)) {
+                                return 'Select end date & time';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Region / Timezone Dropdown
+                    DropdownButtonFormField<String>(
+                      value: _timezones.contains(_selectedTimezone) ? _selectedTimezone : _timezones.first,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'REGION / TIMEZONE *',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                        prefixIcon: Icon(Icons.language, size: 18, color: Colors.purple),
+                      ),
+                      items: _timezones.map((tz) {
+                        return DropdownMenuItem<String>(
+                          value: tz,
+                          child: Text(tz, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedTimezone = val;
+                            _timeZoneController.text = val;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 14),
+
+                    // TOTAL CAMPAIGN DURATION Banner Box (Matching Website Image 3)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.borderGrey),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'TOTAL CAMPAIGN DURATION',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.mediumGrey,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time_filled, size: 18, color: AppTheme.darkGrey),
+                              const SizedBox(width: 8),
+                              Text(
+                                _getDurationText(),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.darkGrey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1000,13 +1438,12 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                           ),
                         const SizedBox(height: 8),
                         TextButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Downloading sample campaign manifest template...'), backgroundColor: AppTheme.primaryGreen),
-                            );
-                          },
+                          onPressed: _downloadSampleTemplate,
                           icon: const Icon(Icons.download, size: 14, color: AppTheme.primaryGreen),
-                          label: const Text('Download campaign manifest template by clicking here', style: TextStyle(fontSize: 11, color: AppTheme.primaryGreen)),
+                          label: const Text(
+                            'Download campaign manifest template by clicking here',
+                            style: TextStyle(fontSize: 11, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ] else if (_selectedContactTab == 'Google Sheet') ...[
                         TextFormField(
@@ -1031,31 +1468,33 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                       ] else if (_selectedContactTab == 'Contact Lists') ...[
                         Container(
                           padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 14),
                           decoration: BoxDecoration(
-                            color: Colors.purple.withOpacity(0.05),
+                            color: Colors.purple.withOpacity(0.04),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.purple.withOpacity(0.2)),
                           ),
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(8),
+                                padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   color: Colors.purple.withOpacity(0.1),
-                                  shape: BoxShape.circle,
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Icon(Icons.contacts, size: 20, color: Colors.purple),
+                                child: const Icon(Icons.group_outlined, size: 20, color: Colors.purple),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               const Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Use a saved audience', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                                    Text('Use a saved audience', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey)),
                                     SizedBox(height: 2),
                                     Text(
-                                      'Phone number, contact name and custom AI instruction are copied into this campaign when created. Later list edits will not change a running campaign.',
-                                      style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey),
+                                      'Phone number, contact name and custom AI instruction are copied into this campaign when it is created. Later list edits will not change a running campaign.',
+                                      style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey, height: 1.3),
                                     ),
                                   ],
                                 ),
@@ -1063,10 +1502,10 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                             ],
                           ),
                         ),
+
                         Consumer(
                           builder: (context, ref, _) {
                             final savedLists = ref.watch(savedListsProvider);
-
                             if (savedLists.isEmpty) {
                               return Container(
                                 width: double.infinity,
@@ -1076,84 +1515,44 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(color: AppTheme.borderGrey),
                                 ),
-                                child: Column(
+                                child: const Column(
                                   children: [
-                                    const Icon(Icons.playlist_add_check, size: 32, color: AppTheme.mediumGrey),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'No saved contact lists yet',
-                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      'Create a list from the Contacts page, then return here.',
-                                      style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) => const ContactsScreen(),
-                                          ),
-                                        );
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.black,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                      ),
-                                      child: const Text('Open Contacts', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                    ),
+                                    Icon(Icons.playlist_add_check, size: 32, color: AppTheme.mediumGrey),
+                                    SizedBox(height: 8),
+                                    Text('No saved contact lists yet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey)),
                                   ],
                                 ),
                               );
                             }
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                DropdownButtonFormField<String>(
-                                  value: savedLists.any((l) => l.id == _selectedContactListId)
-                                      ? _selectedContactListId
-                                      : savedLists.first.id,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Select Saved Contact List *',
-                                    border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.list_alt, color: Colors.purple),
+                            final selectedId = (savedLists.any((l) => l.id == _selectedContactListId))
+                                  ? _selectedContactListId
+                                  : savedLists.first.id;
+
+                            return DropdownButtonFormField<String>(
+                              value: selectedId,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'SAVED LIST *',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                              ),
+                              items: savedLists.map((list) {
+                                return DropdownMenuItem<String>(
+                                  value: list.id,
+                                  child: Text(
+                                    '${list.name} · ${list.phoneNumbers.length} contacts',
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    style: const TextStyle(fontSize: 13, color: AppTheme.darkGrey),
                                   ),
-                                  hint: const Text('Choose list from CRM audience'),
-                                  items: savedLists.map((list) {
-                                    return DropdownMenuItem<String>(
-                                      value: list.id,
-                                      child: Text(
-                                        '${list.name} (${list.phoneNumbers.length} contacts)',
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) => setState(() => _selectedContactListId = val),
-                                ),
-                                const SizedBox(height: 12),
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const ContactsScreen(),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.open_in_new, size: 14),
-                                  label: const Text('Manage Contact Lists', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.black,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  ),
-                                ),
-                              ],
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedContactListId = val;
+                                });
+                              },
                             );
                           },
                         ),
@@ -1163,7 +1562,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                 ),
               if (widget.campaign == null) const SizedBox(height: 16),
 
-              // Campaign Type Cards Section (Standard vs Quick Qualify)
+              // 3. Campaign Type Cards Section (Standard vs Quick Qualify)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -1200,7 +1599,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 4),
-                                  const Text('Fixed retries, scheduled start/end times', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                                  const Text('Fixed retries, scheduled start/end', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
                                 ],
                               ),
                             ),
@@ -1214,8 +1613,8 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: _selectedCampaignType == 'quick_qualify' ? Colors.purple.withOpacity(0.1) : AppTheme.lightGrey,
-                                border: Border.all(color: _selectedCampaignType == 'quick_qualify' ? Colors.purple : AppTheme.borderGrey, width: 1.5),
+                                color: _selectedCampaignType == 'quick_qualify' ? Colors.amber.shade50 : AppTheme.lightGrey,
+                                border: Border.all(color: _selectedCampaignType == 'quick_qualify' ? Colors.amber.shade700 : AppTheme.borderGrey, width: 1.5),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Column(
@@ -1223,13 +1622,13 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(Icons.bolt, size: 16, color: _selectedCampaignType == 'quick_qualify' ? Colors.purple : AppTheme.mediumGrey),
+                                      Icon(Icons.bolt, size: 16, color: _selectedCampaignType == 'quick_qualify' ? Colors.amber.shade700 : AppTheme.mediumGrey),
                                       const SizedBox(width: 4),
                                       const Text('Quick Qualify', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkGrey)),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
-                                  const Text('Sentiment-driven smart auto-stop qualification', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                                  const Text('Sentiment-driven, auto stops on +/-', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
                                 ],
                               ),
                             ),
@@ -1242,82 +1641,146 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Contact File (only rendered when Upload File tab is active)
-              if (widget.campaign == null && _selectedContactTab == 'Upload File')
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Contact File *',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.darkGrey,
+              // 4. Qualification Settings (Visible when Quick Qualify is Selected - Matching Website Image 2)
+              if (_selectedCampaignType == 'quick_qualify') ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.tune, size: 18, color: Colors.amber.shade900),
+                          const SizedBox(width: 8),
+                          Text('Qualification Settings', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.amber.shade900)),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    InkWell(
-                      onTap: _pickFile,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: AppTheme.borderGrey),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.upload_file, color: AppTheme.mediumGrey),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _selectedFile?.name ?? 'Select CSV or Excel file',
-                                style: TextStyle(
-                                  color: _selectedFile != null
-                                      ? AppTheme.darkGrey
-                                      : AppTheme.mediumGrey,
-                                ),
+                      const SizedBox(height: 14),
+
+                      // Row 1: Call Window Start, Call Window End, Cooldown, Max Calls/Day
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _callWindowStartController,
+                              decoration: const InputDecoration(
+                                labelText: 'CALL WINDOW START (HR)',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                               ),
+                              keyboardType: TextInputType.number,
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _callWindowEndController,
+                              decoration: const InputDecoration(
+                                labelText: 'CALL WINDOW END (HR)',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _cooldownController,
+                              decoration: const InputDecoration(
+                                labelText: 'COOLDOWN (MIN)',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _maxCallsPerDayController,
+                              decoration: const InputDecoration(
+                                labelText: 'MAX CALLS/DAY',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                ),
+                      const SizedBox(height: 12),
 
-              // Retries
-              TextFormField(
-                controller: _retriesController,
-                decoration: const InputDecoration(
-                  labelText: 'Retries *',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter number of retries';
-                  }
-                  if (int.tryParse(value) == null) {
-                    return 'Please enter a valid number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
+                      // Row 2: Short Call, Long Call, Max Days, Auto-Disqualify
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _shortCallController,
+                              decoration: const InputDecoration(
+                                labelText: 'SHORT CALL (SEC)',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _longCallController,
+                              decoration: const InputDecoration(
+                                labelText: 'LONG CALL (SEC)',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _maxDaysController,
+                              decoration: const InputDecoration(
+                                labelText: 'MAX DAYS',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _autoDisqualifyDaysController,
+                              decoration: const InputDecoration(
+                                labelText: 'AUTO-DISQUALIFY (DAYS)',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
 
-              // Custom First Line
-              TextFormField(
-                controller: _customFirstLineController,
-                decoration: const InputDecoration(
-                  labelText: 'Custom First Line (Optional)',
-                  border: OutlineInputBorder(),
+                      Text(
+                        'Campaign runs until all contacts get positive/negative sentiment or max days reached. Contacts with no resolution after Auto-Disqualify days are marked unreachable. Retries computed automatically.',
+                        style: TextStyle(fontSize: 10, color: Colors.amber.shade900),
+                      ),
+                    ],
+                  ),
                 ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
 
-              // Campaign Schedule Section Card (Web App Alignment)
+              // Execution Parameters Section
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -1330,207 +1793,42 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.calendar_month_outlined, size: 18, color: AppTheme.darkGrey),
+                        Icon(Icons.settings, size: 18, color: AppTheme.darkGrey),
                         SizedBox(width: 8),
-                        Text('Campaign Schedule', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                        Text('Execution Parameters', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
                       ],
                     ),
                     const SizedBox(height: 12),
-
-                    // Departure / Start (Required)
-                    TextFormField(
-                      controller: _startDateTimeController,
-                      decoration: InputDecoration(
-                        labelText: 'DEPARTURE / START *',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.calendar_today),
-                          onPressed: () => _selectDateTime(_startDateTimeController, true),
-                        ),
-                        hintText: 'YYYY-MM-DD HH:MM',
-                      ),
-                      validator: (val) {
-                        if (val == null || val.isEmpty) {
-                          return 'Please select start date and time';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Arrival / End (Required)
-                    TextFormField(
-                      controller: _endDateTimeController,
-                      decoration: InputDecoration(
-                        labelText: 'ARRIVAL / END *',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.calendar_today),
-                          onPressed: () => _selectDateTime(_endDateTimeController, false),
-                        ),
-                        hintText: 'YYYY-MM-DD HH:MM',
-                      ),
-                      validator: (val) {
-                        if (val == null || val.isEmpty) {
-                          return 'Please select end date and time';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Time Zone Dropdown
                     DropdownButtonFormField<String>(
-                      value: _selectedTimezone,
+                      value: ['0', '1', '2', '3', '4', '5'].contains(_retriesController.text)
+                          ? _retriesController.text
+                          : '0',
                       isExpanded: true,
                       decoration: const InputDecoration(
-                        labelText: 'REGION / TIMEZONE',
+                        labelText: 'RETRY ATTEMPTS *',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.public, color: AppTheme.mediumGrey),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        prefixIcon: Icon(Icons.refresh, size: 18, color: AppTheme.darkGrey),
                       ),
-                      items: _timezones.map((tz) {
-                        return DropdownMenuItem<String>(
-                          value: tz,
-                          child: Text(
-                            tz,
-                            style: const TextStyle(fontSize: 13),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
+                      items: const [
+                        DropdownMenuItem<String>(value: '0', child: Text('No Retry')),
+                        DropdownMenuItem<String>(value: '1', child: Text('1 Retry')),
+                        DropdownMenuItem<String>(value: '2', child: Text('2 Retries')),
+                        DropdownMenuItem<String>(value: '3', child: Text('3 Retries')),
+                        DropdownMenuItem<String>(value: '4', child: Text('4 Retries')),
+                        DropdownMenuItem<String>(value: '5', child: Text('5 Retries')),
+                      ],
                       onChanged: (val) {
                         if (val != null) {
                           setState(() {
-                            _selectedTimezone = val;
-                            _timeZoneController.text = val;
+                            _retriesController.text = val;
                           });
                         }
                       },
                     ),
-                    const SizedBox(height: 12),
-
-                    // Total Campaign Duration Container
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.lightGrey,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 16, color: AppTheme.darkGrey),
-                          const SizedBox(width: 8),
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('TOTAL CAMPAIGN DURATION', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey)),
-                            ],
-                          ),
-                          const Spacer(),
-                          Text(
-                            _getDurationText(),
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-
-              // AI Automation Section Card (Web App Alignment)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightGrey,
-                  border: Border.all(color: AppTheme.borderGrey),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.smart_toy_outlined, size: 18, color: AppTheme.darkGrey),
-                        SizedBox(width: 8),
-                        Text(
-                          'AI Automation',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
-                        ),
-                        Spacer(),
-                        Text('OPTIONAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.mediumGrey)),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    const Text('Configure post-call automations triggered after each contact interaction.', style: TextStyle(fontSize: 11, color: AppTheme.mediumGrey)),
-                    const SizedBox(height: 12),
-
-                    // Auto Follow-up Call Switch
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceCard,
-                        border: Border.all(color: AppTheme.borderGrey),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.call_made, size: 16, color: AppTheme.mediumGrey),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Auto Follow-up Call', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
-                                Text('Trigger a follow-up call after unanswered contacts', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
-                              ],
-                            ),
-                          ),
-                          Switch(
-                            value: _autoFollowupCall,
-                            activeColor: AppTheme.primaryGreen,
-                            onChanged: (val) => setState(() => _autoFollowupCall = val),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Send WhatsApp Message Switch
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceCard,
-                        border: Border.all(color: AppTheme.borderGrey),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.chat, size: 16, color: AppTheme.primaryGreen),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Send WhatsApp Message', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
-                                Text('Send a personalised WhatsApp message via Business API', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
-                              ],
-                            ),
-                          ),
-                          Switch(
-                            value: _sendWhatsappMessage,
-                            activeColor: AppTheme.primaryGreen,
-                            onChanged: (val) => setState(() => _sendWhatsappMessage = val),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               // Save Button
               ElevatedButton(

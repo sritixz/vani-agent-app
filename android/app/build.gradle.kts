@@ -33,8 +33,8 @@ android {
         applicationId = "app.vaniagent.com"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = (flutter.versionCode ?: 4)
-        versionName = flutter.versionName ?: "1.0.4"
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
         ndk {
             abiFilters.addAll(listOf("arm64-v8a", "x86_64"))
         }

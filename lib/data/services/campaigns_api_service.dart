@@ -148,15 +148,21 @@ class CampaignsApiService {
     return [
       CampaignNumber(
         id: 'num_1',
-        campaignId: campaignId,
         phoneNumber: '+917337592673',
         contactName: 'john',
         status: 'completed',
         attempts: 4,
-        round: 1,
+        resolved: true,
         sentiment: 'neutral',
+        whatsappSent: false,
+        dailyCallCount: 1,
         lastCallAt: DateTime.now().toIso8601String(),
-        analysisOutcome: 'The call is in its initial stages, with the assistant attempting to gather information.',
+        blocker: 'Completed',
+        callOutcome: 'Static Call Completed',
+        qualificationRounds: 1,
+        triedNumbersCount: 1,
+        whatsappEscalationCount: 0,
+        createdAt: DateTime.now().toIso8601String(),
       ),
     ];
   }

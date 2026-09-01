@@ -11,6 +11,7 @@ import 'package:vani_app/widgets/app_header.dart';
 import 'package:vani_app/data/services/subscriptions_api_service.dart';
 import 'package:vani_app/data/models/subscriptions/subscription_model.dart';
 import 'package:vani_app/presentation/providers/subscriptions_provider.dart';
+import 'package:vani_app/presentation/providers/agents_provider.dart';
 import 'package:vani_app/data/models/calls/call_statistics_model.dart';
 import 'package:vani_app/data/services/calls_api_service.dart';
 
@@ -1956,13 +1957,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   void _showSendCallDialog(BuildContext context) {
     final phoneController = TextEditingController();
+    final nameController = TextEditingController();
+    final instructionController = TextEditingController();
+    String? selectedAgentId;
     bool isSending = false;
 
     showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (modalContext, setDialogState) {
+            final agentsState = ref.watch(agentsProvider);
+            if (selectedAgentId == null && agentsState.agents.isNotEmpty) {
+              selectedAgentId = agentsState.agents.first.id;
+            }
+
             return AlertDialog(
               backgroundColor: AppTheme.surfaceCard,
               shape: RoundedRectangleBorder(
@@ -1973,33 +1982,80 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 children: [
                   Icon(Icons.call, color: AppTheme.primaryGreen),
                   SizedBox(width: 8),
-                  Text('Send Outbound Call', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text('Send Outbound AI Call', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ],
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Trigger a direct AI agent call to any verified phone number.',
-                    style: TextStyle(fontSize: 12, color: AppTheme.mediumGrey),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'Phone Number',
-                      hintText: '+919876543210',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Dispatch a real-time AI voice agent call to any phone number.',
+                      style: TextStyle(fontSize: 12, color: AppTheme.mediumGrey),
                     ),
-                  ),
-                  if (isSending) ...[
                     const SizedBox(height: 16),
-                    const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
+                    DropdownButtonFormField<String>(
+                      value: selectedAgentId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Select AI Agent *',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      hint: const Text('Choose Agent'),
+                      items: agentsState.agents.map((ag) {
+                        return DropdownMenuItem<String>(
+                          value: ag.id,
+                          child: Text(
+                            '${ag.name} (${ag.voice})',
+                            style: const TextStyle(fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => selectedAgentId = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Destination Phone (E.164) *',
+                        hintText: '+919876543210',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Recipient Name (Optional)',
+                        hintText: 'John Doe',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: instructionController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Custom Instruction (Optional)',
+                        hintText: 'Remind client about today\'s appointment',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                    if (isSending) ...[
+                      const SizedBox(height: 16),
+                      const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
+                    ],
                   ],
-                ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -2011,18 +2067,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ? null
                       : () async {
                           final phone = phoneController.text.trim();
-                          if (phone.isEmpty) return;
+                          if (phone.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please enter destination phone number'),
+                                backgroundColor: AppTheme.warningOrange,
+                              ),
+                            );
+                            return;
+                          }
+                          if (selectedAgentId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please select an AI agent'),
+                                backgroundColor: AppTheme.warningOrange,
+                              ),
+                            );
+                            return;
+                          }
+
                           setDialogState(() => isSending = true);
                           try {
-                            await ref.read(callsApiServiceProvider).validateCall({
-                              'phone_number': phone,
-                              'call_type': 'outbound',
-                            });
+                            await ref.read(callsApiServiceProvider).sendCall(
+                              agentId: selectedAgentId!,
+                              phoneNumber: phone,
+                              contactName: nameController.text.trim(),
+                              customInstruction: instructionController.text.trim(),
+                            );
                             if (context.mounted) {
                               Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Call initiated successfully!'),
+                                  content: Text('Outbound call dispatched successfully!'),
                                   backgroundColor: AppTheme.primaryGreen,
                                 ),
                               );
@@ -2032,7 +2108,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Failed to send call: $e'),
+                                  content: Text('Failed to dispatch call: $e'),
                                   backgroundColor: AppTheme.errorRed,
                                 ),
                               );

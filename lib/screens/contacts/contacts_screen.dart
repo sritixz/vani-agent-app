@@ -7,6 +7,7 @@ import 'package:vani_app/data/services/contacts_api_service.dart';
 import 'package:vani_app/models/contact_model.dart';
 import 'package:vani_app/providers/contacts_provider.dart';
 import 'package:vani_app/providers/saved_lists_provider.dart';
+import 'package:vani_app/widgets/ai_call_analysis_dialog.dart';
 
 class ContactsScreen extends ConsumerStatefulWidget {
   const ContactsScreen({super.key});
@@ -1504,15 +1505,33 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
             },
           ),
           IconButton(
+            tooltip: 'View AI Call Analysis',
+            icon: const Icon(
+              Icons.analytics_outlined,
+              color: AppTheme.primaryGreen,
+              size: 20,
+            ),
+            onPressed: () {
+              AICallAnalysisDialog.show(
+                context,
+                phoneNumber: contact.phoneNumber,
+                campaignName: 'Sales1',
+                sentiment: 'neutral',
+              );
+            },
+          ),
+          IconButton(
             icon: Icon(
               contact.notesCount > 0 ? Icons.chat_bubble : Icons.chat_bubble_outline,
               color: contact.notesCount > 0 ? AppTheme.primaryGreen : AppTheme.borderGrey,
               size: 20,
             ),
             onPressed: () {
-              // TODO: Navigate to contact details/notes
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('View notes for ${contact.displayName}')),
+              AICallAnalysisDialog.show(
+                context,
+                phoneNumber: contact.phoneNumber,
+                campaignName: 'Sales1',
+                sentiment: 'neutral',
               );
             },
           ),

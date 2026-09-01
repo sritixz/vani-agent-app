@@ -170,6 +170,41 @@ class ContactsNotifier extends StateNotifier<ContactsState> {
     }
   }
 
+  Future<bool> addContact({
+    required String phoneNumber,
+    String? contactName,
+    String? email,
+    String? leadStatus,
+    List<String>? tags,
+    String? note,
+  }) async {
+    try {
+      final newContact = await _apiService.createContact(
+        phoneNumber: phoneNumber,
+        contactName: contactName,
+        email: email,
+        leadStatus: leadStatus,
+        tags: tags,
+        note: note,
+      );
+
+      if (newContact != null) {
+        // Prepend new contact to current contacts list
+        final updatedList = [newContact, ...state.contacts];
+        state = state.copyWith(
+          contacts: updatedList,
+          total: state.total + 1,
+          error: null,
+        );
+        return true;
+      }
+      return false;
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      return false;
+    }
+  }
+
   void clearError() {
     state = state.copyWith(error: null);
   }

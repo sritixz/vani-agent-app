@@ -72,6 +72,27 @@ class CallsApiService {
     );
     return response.data as Map<String, dynamic>;
   }
+
+  Future<Map<String, dynamic>> sendCall({
+    required String agentId,
+    required String phoneNumber,
+    String? contactName,
+    String? customInstruction,
+    int retryCount = 1,
+  }) async {
+    final response = await _dioClient.post(
+      ApiEndpoints.sendCall,
+      data: {
+        'agent_id': agentId,
+        'phone_number': phoneNumber,
+        if (contactName != null && contactName.isNotEmpty) 'contact_name': contactName,
+        if (customInstruction != null && customInstruction.isNotEmpty)
+          'custom_instruction': customInstruction,
+        'retry_count': retryCount,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
 }
 
 // Provider

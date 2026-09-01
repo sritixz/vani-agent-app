@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vani_app/config/theme.dart';
 import 'package:vani_app/data/models/calls/call_history_model.dart';
 import 'package:vani_app/presentation/providers/calls_provider.dart';
+import 'package:vani_app/widgets/ai_call_analysis_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CallHistoryScreen extends ConsumerStatefulWidget {
@@ -348,29 +349,60 @@ class _CallHistoryScreenState extends ConsumerState<CallHistoryScreen> {
                 ),
             ],
           ),
-          if (call.summary != null || call.humanNotesText != null) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () {
-                  _showNotesDialog(call);
-                },
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppTheme.borderGrey),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text(
-                  'View Notes',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.darkGrey,
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    AICallAnalysisDialog.show(
+                      context,
+                      call: call,
+                      phoneNumber: call.phoneNumber,
+                      campaignName: call.campaignId ?? 'Sales1',
+                      sentiment: call.sentiment ?? 'neutral',
+                      summary: call.summary,
+                    );
+                  },
+                  icon: const Icon(Icons.remove_red_eye_outlined, size: 14, color: AppTheme.primaryGreen),
+                  label: const Text(
+                    'AI Call Analysis',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryGreen,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.primaryGreen),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ),
-            ),
-          ],
+              if (call.summary != null || call.humanNotesText != null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      _showNotesDialog(call);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppTheme.borderGrey),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    child: const Text(
+                      'View Notes',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.darkGrey,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
