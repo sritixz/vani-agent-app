@@ -87,6 +87,36 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
   final _contactStreamUrlController = TextEditingController();
   String? _selectedContactListId;
 
+  // Contact Stream Filters (Website Parity)
+  String _streamMode = 'new_leads'; // 'new_leads', 'existing'
+  final Set<String> _selectedStreamSources = {'meta_ads', 'crm_webhook'};
+  final Set<String> _selectedStreamLeadStatuses = {};
+
+  final Map<String, Map<String, dynamic>> _streamSourceOptions = {
+    'meta_ads': {'label': 'Meta Ads', 'color': Colors.purple},
+    'indiamart': {'label': 'IndiaMart', 'color': Colors.orange},
+    'justdial': {'label': 'JustDial', 'color': Colors.amber},
+    'crm_webhook': {'label': 'CRM / Webhook', 'color': Colors.purple},
+    'whatsapp': {'label': 'WhatsApp', 'color': Colors.green},
+    'google_sheets': {'label': 'Google Sheets', 'color': Colors.green},
+    'manual': {'label': 'Manual Entry', 'color': Colors.grey},
+    'excel_csv': {'label': 'Excel / CSV', 'color': Colors.green},
+    'other': {'label': 'Other', 'color': Colors.grey},
+  };
+
+  final Map<String, Map<String, dynamic>> _streamStatusOptions = {
+    'new': {'label': 'New', 'color': Colors.grey},
+    'attempting': {'label': 'Attempting', 'color': Colors.amber},
+    'no_answer': {'label': 'No Answer', 'color': Colors.orange},
+    'callback': {'label': 'Callback', 'color': Colors.purple},
+    'connected': {'label': 'Connected', 'color': Colors.blue},
+    'interested': {'label': 'Interested', 'color': Colors.teal},
+    'not_interested': {'label': 'Not Interested', 'color': Colors.red},
+    'qualified': {'label': 'Qualified', 'color': Colors.green},
+    'converted': {'label': 'Converted', 'color': Colors.green},
+    'junk_dnc': {'label': 'Junk / DNC', 'color': Colors.blueGrey},
+  };
+
   String _selectedCampaignType = 'standard'; // 'standard', 'quick_qualify'
   String _selectedTimezone = 'Asia/Kolkata';
 
@@ -711,7 +741,12 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
         campaignData['contact_list_id'] = _selectedContactListId;
         campaignData['contactListId'] = _selectedContactListId;
       } else if (_selectedContactTab == 'Contact Stream') {
-        campaignData['contact_stream_url'] = _contactStreamUrlController.text.trim();
+        campaignData['stream_mode'] = _streamMode;
+        campaignData['streamMode'] = _streamMode;
+        campaignData['stream_source_filter'] = _selectedStreamSources.join(',');
+        campaignData['streamSourceFilter'] = _selectedStreamSources.join(',');
+        campaignData['stream_lead_status_filter'] = _selectedStreamLeadStatuses.join(',');
+        campaignData['streamLeadStatusFilter'] = _selectedStreamLeadStatuses.join(',');
       }
 
       if (_selectedFile != null && _selectedContactTab == 'Upload File') {
@@ -1017,7 +1052,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Multi-Number Rotation Switch
+              // Multi-Number Rotation Switch (Matching Website Image 1)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
@@ -1048,281 +1083,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Auto Follow-up for WhatsApp & Escalation Settings Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceCard,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.borderGrey),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Icon(Icons.chat, size: 18, color: Colors.green),
-                        ),
-                        const SizedBox(width: 10),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Auto Follow-up for WhatsApp', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
-                              Text('Automatically send WhatsApp messages after unreached or completed calls', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _sendWhatsappMessage,
-                          activeColor: Colors.green,
-                          onChanged: (val) => setState(() => _sendWhatsappMessage = val),
-                        ),
-                      ],
-                    ),
-
-                    if (_sendWhatsappMessage) ...[
-                      const Divider(height: 24),
-                      const Text(
-                        'WhatsApp Escalation & Trigger Configuration',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Row 1: Trigger Event & Template
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _whatsappTriggerType,
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Trigger Event',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                              ),
-                              items: const [
-                                DropdownMenuItem(value: 'no_answer', child: Text('On No Answer / Unreachable', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
-                                DropdownMenuItem(value: 'busy', child: Text('On Line Busy', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
-                                DropdownMenuItem(value: 'completed', child: Text('On Call Completed', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
-                                DropdownMenuItem(value: 'always', child: Text('Always After Call', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) setState(() => _whatsappTriggerType = val);
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _whatsappTemplateId,
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'WhatsApp Template',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                              ),
-                              items: const [
-                                DropdownMenuItem(value: 'template_followup_1', child: Text('Default Followup Template', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
-                                DropdownMenuItem(value: 'template_qual_reminder', child: Text('Lead Qualification Reminder', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
-                                DropdownMenuItem(value: 'template_confirm', child: Text('Appointment Confirmation', style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) setState(() => _whatsappTemplateId = val);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Row 2: Escalate After Call Round & Max Messages Per Day
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _whatsappEscalationRoundController,
-                              decoration: const InputDecoration(
-                                labelText: 'Escalate After Call Round',
-                                hintText: 'e.g. 3',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _whatsappMaxPerDayController,
-                              decoration: const InputDecoration(
-                                labelText: 'Max Messages / Day',
-                                hintText: 'e.g. 1',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Campaign Schedule Container (Matching Website Image 3)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceCard,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.borderGrey),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.calendar_month_outlined, size: 18, color: AppTheme.darkGrey),
-                        SizedBox(width: 8),
-                        Text(
-                          'Campaign Schedule',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Departure / Start & Arrival / End
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _startDateTimeController,
-                            readOnly: true,
-                            onTap: () => _selectDateTime(_startDateTimeController, true),
-                            decoration: const InputDecoration(
-                              labelText: 'DEPARTURE / START *',
-                              hintText: 'dd/mm/yyyy --:--',
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                              prefixIcon: Icon(Icons.event_outlined, size: 18, color: AppTheme.primaryGreen),
-                              suffixIcon: Icon(Icons.calendar_today, size: 14),
-                            ),
-                            validator: (val) {
-                              if (widget.campaign == null && (val == null || val.trim().isEmpty)) {
-                                return 'Select start date & time';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _endDateTimeController,
-                            readOnly: true,
-                            onTap: () => _selectDateTime(_endDateTimeController, false),
-                            decoration: const InputDecoration(
-                              labelText: 'ARRIVAL / END *',
-                              hintText: 'dd/mm/yyyy --:--',
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                              prefixIcon: Icon(Icons.event_busy_outlined, size: 18, color: AppTheme.errorRed),
-                              suffixIcon: Icon(Icons.calendar_today, size: 14),
-                            ),
-                            validator: (val) {
-                              if (widget.campaign == null && (val == null || val.trim().isEmpty)) {
-                                return 'Select end date & time';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Region / Timezone Dropdown
-                    DropdownButtonFormField<String>(
-                      value: _timezones.contains(_selectedTimezone) ? _selectedTimezone : _timezones.first,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'REGION / TIMEZONE *',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                        prefixIcon: Icon(Icons.language, size: 18, color: Colors.purple),
-                      ),
-                      items: _timezones.map((tz) {
-                        return DropdownMenuItem<String>(
-                          value: tz,
-                          child: Text(tz, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() {
-                            _selectedTimezone = val;
-                            _timeZoneController.text = val;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 14),
-
-                    // TOTAL CAMPAIGN DURATION Banner Box (Matching Website Image 3)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.borderGrey),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'TOTAL CAMPAIGN DURATION',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.mediumGrey,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.access_time_filled, size: 18, color: AppTheme.darkGrey),
-                              const SizedBox(width: 8),
-                              Text(
-                                _getDurationText(),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.darkGrey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 4-Tab Contact Source Selector Card
+              // 4-Tab Contact Source Selector Card (Matching Website Image 2)
               if (widget.campaign == null)
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -1334,7 +1095,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Contacts Source', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                      const Text('Contacts', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
                       const SizedBox(height: 12),
 
                       // Source Tab Selection Bar
@@ -1456,13 +1217,198 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                           ),
                         ),
                       ] else if (_selectedContactTab == 'Contact Stream') ...[
-                        TextFormField(
-                          controller: _contactStreamUrlController,
-                          decoration: const InputDecoration(
-                            labelText: 'Realtime Contact Stream Webhook URL',
-                            hintText: 'https://api.vaniagent.com/webhooks/contacts',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.stream, color: Colors.blue),
+                        // 1. Stream Mode Choice Cards
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => setState(() => _streamMode = 'new_leads'),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: _streamMode == 'new_leads' ? Colors.purple.withOpacity(0.04) : Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: _streamMode == 'new_leads' ? Colors.purple : AppTheme.borderGrey,
+                                      width: _streamMode == 'new_leads' ? 1.5 : 1.0,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.bolt, size: 20, color: Colors.purple),
+                                      const SizedBox(width: 8),
+                                      const Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('New Leads Only', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.darkGrey)),
+                                            SizedBox(height: 2),
+                                            Text('Call fresh leads as they arrive (ongoing)', style: TextStyle(fontSize: 9, color: AppTheme.mediumGrey)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => setState(() => _streamMode = 'existing'),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: _streamMode == 'existing' ? Colors.purple.withOpacity(0.04) : Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: _streamMode == 'existing' ? Colors.purple : AppTheme.borderGrey,
+                                      width: _streamMode == 'existing' ? 1.5 : 1.0,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.storage_outlined, size: 20, color: Colors.blue),
+                                      const SizedBox(width: 8),
+                                      const Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Existing Only', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.darkGrey)),
+                                            SizedBox(height: 2),
+                                            Text('One-time campaign on existing contacts', style: TextStyle(fontSize: 9, color: AppTheme.mediumGrey)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // 2. SOURCE FILTER * (Multi-Select Filter Grid)
+                        const Text('SOURCE FILTER *', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey, letterSpacing: 0.5)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _streamSourceOptions.entries.map((entry) {
+                            final key = entry.key;
+                            final label = entry.value['label'] as String;
+                            final color = entry.value['color'] as Color;
+                            final isSelected = _selectedStreamSources.contains(key);
+
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  if (isSelected) {
+                                    _selectedStreamSources.remove(key);
+                                  } else {
+                                    _selectedStreamSources.add(key);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? Colors.purple.withOpacity(0.06) : Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSelected ? Colors.purple : AppTheme.borderGrey,
+                                    width: isSelected ? 1.5 : 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                                    const SizedBox(width: 6),
+                                    Text(label, style: TextStyle(fontSize: 11, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, color: isSelected ? Colors.purple : AppTheme.darkGrey)),
+                                    if (isSelected) ...[
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.check, size: 12, color: Colors.purple),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // 3. LEAD STATUS FILTER (optional — leave empty to match all)
+                        const Text('LEAD STATUS FILTER (optional — leave empty to match all)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey, letterSpacing: 0.3)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _streamStatusOptions.entries.map((entry) {
+                            final key = entry.key;
+                            final label = entry.value['label'] as String;
+                            final color = entry.value['color'] as Color;
+                            final isSelected = _selectedStreamLeadStatuses.contains(key);
+
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  if (isSelected) {
+                                    _selectedStreamLeadStatuses.remove(key);
+                                  } else {
+                                    _selectedStreamLeadStatuses.add(key);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? Colors.purple.withOpacity(0.06) : Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSelected ? Colors.purple : AppTheme.borderGrey,
+                                    width: isSelected ? 1.5 : 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                                    const SizedBox(width: 6),
+                                    Text(label, style: TextStyle(fontSize: 11, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, color: isSelected ? Colors.purple : AppTheme.darkGrey)),
+                                    if (isSelected) ...[
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.check, size: 12, color: Colors.purple),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // 4. Purple Info Banner
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.withOpacity(0.04),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.purple.withOpacity(0.2)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.bolt, size: 16, color: Colors.purple),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Campaign starts empty. Contacts are added automatically within 5 minutes of being created with a matching source.',
+                                  style: TextStyle(fontSize: 10, color: Colors.purple, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ] else if (_selectedContactTab == 'Contact Lists') ...[
@@ -1562,7 +1508,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                 ),
               if (widget.campaign == null) const SizedBox(height: 16),
 
-              // 3. Campaign Type Cards Section (Standard vs Quick Qualify)
+              // Campaign Type Cards Section (Standard vs Quick Qualify - Matching Website Image 3)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -1641,7 +1587,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 4. Qualification Settings (Visible when Quick Qualify is Selected - Matching Website Image 2)
+              // Qualification Settings (Visible when Quick Qualify is Selected)
               if (_selectedCampaignType == 'quick_qualify') ...[
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -1780,7 +1726,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // Execution Parameters Section
+              // Execution Parameters Section (Matching Website Image 3)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -1824,6 +1770,316 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                           });
                         }
                       },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Campaign Schedule Container (Matching Website Image 3)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.calendar_month_outlined, size: 18, color: AppTheme.darkGrey),
+                        SizedBox(width: 8),
+                        Text(
+                          'Campaign Schedule',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Departure / Start & Arrival / End
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _startDateTimeController,
+                            readOnly: true,
+                            onTap: () => _selectDateTime(_startDateTimeController, true),
+                            decoration: const InputDecoration(
+                              labelText: 'DEPARTURE / START *',
+                              hintText: 'dd/mm/yyyy --:--',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                              prefixIcon: Icon(Icons.event_outlined, size: 18, color: AppTheme.primaryGreen),
+                              suffixIcon: Icon(Icons.calendar_today, size: 14),
+                            ),
+                            validator: (val) {
+                              if (widget.campaign == null && (val == null || val.trim().isEmpty)) {
+                                return 'Select start date & time';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _endDateTimeController,
+                            readOnly: true,
+                            onTap: () => _selectDateTime(_endDateTimeController, false),
+                            decoration: const InputDecoration(
+                              labelText: 'ARRIVAL / END *',
+                              hintText: 'dd/mm/yyyy --:--',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                              prefixIcon: Icon(Icons.event_busy_outlined, size: 18, color: AppTheme.errorRed),
+                              suffixIcon: Icon(Icons.calendar_today, size: 14),
+                            ),
+                            validator: (val) {
+                              if (widget.campaign == null && (val == null || val.trim().isEmpty)) {
+                                return 'Select end date & time';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Region / Timezone Dropdown
+                    DropdownButtonFormField<String>(
+                      value: _timezones.contains(_selectedTimezone) ? _selectedTimezone : _timezones.first,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'REGION / TIMEZONE *',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                        prefixIcon: Icon(Icons.language, size: 18, color: Colors.purple),
+                      ),
+                      items: _timezones.map((tz) {
+                        return DropdownMenuItem<String>(
+                          value: tz,
+                          child: Text(tz, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedTimezone = val;
+                            _timeZoneController.text = val;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 14),
+
+                    // TOTAL CAMPAIGN DURATION Banner Box
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.borderGrey),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'TOTAL CAMPAIGN DURATION',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.mediumGrey,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time_filled, size: 18, color: AppTheme.darkGrey),
+                              const SizedBox(width: 8),
+                              Text(
+                                _getDurationText(),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.darkGrey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // AI Automation Section Card (OPTIONAL - Matching Website Image 3 & 4)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceCard,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderGrey),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.smart_toy_outlined, size: 18, color: AppTheme.darkGrey),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('AI Automation', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                              Text('Configure post-call automations triggered after each contact interaction.', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightGrey,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('OPTIONAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.mediumGrey)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Sub-card 1: Auto Follow-up Call
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.borderGrey),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.lightGrey,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.north_east, size: 16, color: AppTheme.darkGrey),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Auto Follow-up Call', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                                Text('Trigger a follow-up call after unanswered contacts', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _autoFollowupCall,
+                            activeColor: AppTheme.primaryGreen,
+                            onChanged: (val) => setState(() => _autoFollowupCall = val),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Sub-card 2: Send WhatsApp Message
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.borderGrey),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Icon(Icons.chat_bubble_outline, size: 16, color: Colors.green),
+                              ),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Send WhatsApp Message', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.darkGrey)),
+                                    Text('Send a personalised WhatsApp message via Business API', style: TextStyle(fontSize: 10, color: AppTheme.mediumGrey)),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: _sendWhatsappMessage,
+                                activeColor: Colors.green,
+                                onChanged: (val) => setState(() => _sendWhatsappMessage = val),
+                              ),
+                            ],
+                          ),
+                          if (_sendWhatsappMessage) ...[
+                            const Divider(height: 20),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: DropdownButtonFormField<String>(
+                                    value: _whatsappTriggerType,
+                                    isExpanded: true,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Trigger Event',
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(value: 'no_answer', child: Text('On No Answer', style: TextStyle(fontSize: 11))),
+                                      DropdownMenuItem(value: 'busy', child: Text('On Line Busy', style: TextStyle(fontSize: 11))),
+                                      DropdownMenuItem(value: 'completed', child: Text('On Completed', style: TextStyle(fontSize: 11))),
+                                      DropdownMenuItem(value: 'always', child: Text('Always After Call', style: TextStyle(fontSize: 11))),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) setState(() => _whatsappTriggerType = val);
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: DropdownButtonFormField<String>(
+                                    value: _whatsappTemplateId,
+                                    isExpanded: true,
+                                    decoration: const InputDecoration(
+                                      labelText: 'WhatsApp Template',
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(value: 'template_followup_1', child: Text('Default Followup', style: TextStyle(fontSize: 11))),
+                                      DropdownMenuItem(value: 'template_qual_reminder', child: Text('Qualification Reminder', style: TextStyle(fontSize: 11))),
+                                      DropdownMenuItem(value: 'template_confirm', child: Text('Confirmation', style: TextStyle(fontSize: 11))),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) setState(() => _whatsappTemplateId = val);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
